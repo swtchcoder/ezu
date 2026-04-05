@@ -1,6 +1,8 @@
 *.osu
 *.osz
 
+*.dat
+
 *.o
 *.exe
 *.out

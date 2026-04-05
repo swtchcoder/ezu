@@ -4,7 +4,7 @@
 #include <string.h>
 
 #define INI_SEPARATOR ':'
-#define INI_CAPACITY 2
+#define INI_STRING_LENGTH 128
 
 long
 ini_section(FILE *file, const char *section)
@@ -121,7 +121,7 @@ ini_value_ex(FILE *file, char *buffer, const char *key,
 			return NULL;
 		}
 	} while (c == ' ');
-	capacity = INI_CAPACITY;
+	capacity = INI_STRING_LENGTH;
 	value = malloc(capacity);
 	if (value == NULL) {
 		return NULL;

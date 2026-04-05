@@ -5,15 +5,17 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include <stdint.h>
+
 typedef struct {
 	float time;
-	int lane;
+	char lane;
 	int hit;
 } note_t;
 
 typedef struct {
 	note_t *notes;
-	unsigned long long length;
+	uint64_t length;
 } chart_t;
 
 float

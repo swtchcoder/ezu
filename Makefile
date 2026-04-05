@@ -1,6 +1,6 @@
 include config.mk
 
-SRC=ini.c beatmap.c chart.c osu.c main.c
+SRC=ini.c beatmap.c chart.c osu.c db.c main.c
 OBJ=$(SRC:.c=.o)
 
 all: build
@@ -14,4 +14,4 @@ build: $(OBJ)
 	$(CC) -o $@ $(OBJ) $(LDFLAGS)
 
 clean:
-	rm -f build $(OBJ)
+	rm -f build $(OBJ) *.dat
