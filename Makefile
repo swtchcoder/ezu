@@ -1,6 +1,6 @@
 include config.mk
 
-SRC=ini.c beatmap.c chart.c osu.c db.c main.c
+SRC=ini.c beatmap.c chart.c osu.c osz.c db.c main.c
 OBJ=$(SRC:.c=.o)
 
 all: build

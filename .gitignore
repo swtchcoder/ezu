@@ -4,5 +4,5 @@
 *.dat
 
 *.o
-*.exe
-*.out
+build.exe
+build

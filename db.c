@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define DB_CHART_FMT "c%llu.dat"
+#define DB_CHART_FMT "c%zu.dat"
 /* DB_STRING_LENGTH must be lower or equal to INI_STRING_LENGTH */
 #define DB_STRING_LENGTH 128
 
