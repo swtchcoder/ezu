@@ -1,6 +1,7 @@
 #include "beatmap.h"
 #include "chart.h"
 #include "db.h"
+#include "log.h"
 #include "osz.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_init.h>
@@ -25,19 +26,17 @@ main(int argc, char *argv[])
 	float difficulty;
 	zip_t *z;
 	if (db_open() != 0) {
-		fprintf(stderr, "Failed to open database\n");
+		ERROR("Failed to open database\n");
 		return 1;
 	}
 	if (argc != 1) {
 		z = zip_open(argv[1], 0, NULL);
 		if (z == NULL) {
-			fprintf(stderr, "%s: Failed to open zip file\n",
-				argv[1]);
+			ERRORF("%s: Failed to open zip file\n", argv[1]);
 		} else {
 			if (osz_import(z) == 0) {
-				fprintf(stderr,
-					"%s: Failed to import osz file\n",
-					argv[1]);
+				ERRORF("%s: Failed to import osz file\n",
+				       argv[1]);
 			}
 			zip_close(z);
 		}
@@ -46,13 +45,12 @@ main(int argc, char *argv[])
 	for (i = 0; i < entries; i++) {
 		beatmap = db_beatmap(i);
 		if (beatmap == NULL) {
-			fprintf(stderr, "%zu: Could not parse osu beatmap\n",
-				i);
+			ERRORF("%zu: Could not parse osu beatmap\n", i);
 			continue;
 		}
 		chart = db_chart(i);
 		if (chart == NULL) {
-			fprintf(stderr, "%zu: Could not parse chart\n", i);
+			ERRORF("%zu: Could not parse chart\n", i);
 			continue;
 		}
 		difficulty = chart_difficulty(chart);
@@ -63,21 +61,18 @@ main(int argc, char *argv[])
 		printf("* difficulty: %.2f stars\n\n", difficulty);
 	}
 	if (SDL_Init(SDL_INIT_VIDEO) == 0) {
-		fprintf(stderr, "Unable to initialize SDL3: %s\n",
-			SDL_GetError());
+		ERRORF("Unable to initialize SDL3: %s\n", SDL_GetError());
 		return 1;
 	}
 	w = SDL_CreateWindow("ezu", 800, 600, SDL_WINDOW_OPENGL);
 	if (w == NULL) {
-		fprintf(stderr, "Failed to create window: %s\n",
-			SDL_GetError());
+		ERRORF("Failed to create window: %s\n", SDL_GetError());
 		SDL_Quit();
 		return 1;
 	}
 	r = SDL_CreateRenderer(w, NULL);
 	if (r == NULL) {
-		fprintf(stderr, "Failed to create renderer: %s\n",
-			SDL_GetError());
+		ERRORF("Failed to create renderer: %s\n", SDL_GetError());
 		SDL_DestroyWindow(w);
 		SDL_Quit();
 		return 1;

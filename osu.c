@@ -2,9 +2,11 @@
 #include "beatmap.h"
 #include "chart.h"
 #include "ini.h"
+#include "log.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 #define OSU_CAPACITY 2
 
@@ -17,6 +19,7 @@ osu_beatmap(FILE *file)
 
 	beatmap = malloc(sizeof(beatmap_t));
 	if (beatmap == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
 
@@ -89,11 +92,13 @@ osu_chart(FILE *file)
 	capacity = OSU_CAPACITY;
 	chart = malloc(capacity * sizeof(chart_t));
 	if (chart == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
 	chart->length = 0;
 	chart->notes = malloc(capacity * sizeof(note_t));
 	if (chart->notes == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
 	while (fgets(buffer, sizeof(buffer), file)) {
@@ -101,13 +106,17 @@ osu_chart(FILE *file)
 			capacity *= 2;
 			tmp = realloc(chart->notes, capacity * sizeof(note_t));
 			if (tmp == NULL) {
+				ERRORF("Failed to reallocate buffer: %s\n",
+				       strerror(errno));
 				free(chart->notes);
+				free(chart);
 				return NULL;
 			}
 			chart->notes = tmp;
 		}
 		if (sscanf(buffer, "%d,%d,%d,%d", &x, &y, &time_ms, &type) !=
 		    4) {
+			ERROR("Failed to scan note data\n");
 			continue;
 		}
 		t = time_ms / 1000.0f;
@@ -124,6 +133,8 @@ osu_chart(FILE *file)
 	if (chart->length != capacity) {
 		tmp = realloc(chart->notes, chart->length * sizeof(chart_t));
 		if (tmp == NULL) {
+			ERRORF("Failed to reallocate buffer: %s\n",
+			       strerror(errno));
 			free(chart->notes);
 			return NULL;
 		}

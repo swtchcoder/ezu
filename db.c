@@ -11,9 +11,12 @@
 #include "db.h"
 #include "beatmap.h"
 #include "chart.h"
+#include "log.h"
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define DB_CHART_FMT "c%zu.dat"
 /* DB_STRING_LENGTH must be lower or equal to INI_STRING_LENGTH */
@@ -60,6 +63,7 @@ db_add(beatmap_t *beatmap, chart_t *chart)
 	snprintf(buffer, DB_STRING_LENGTH, DB_CHART_FMT, entries);
 	f = fopen(buffer, "wb");
 	if (f == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return 1;
 	}
 	fwrite(&chart->length, sizeof(uint64_t), 1, f);
@@ -96,10 +100,12 @@ db_beatmap(uint64_t i)
 {
 	beatmap_t *beatmap;
 	if (i >= entries) {
+		ERRORF("%zu: Index out of bounds\n", i);
 		return NULL;
 	}
 	beatmap = malloc(sizeof(beatmap_t));
 	if (beatmap == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
 	beatmap->music = malloc(sizeof(char) * DB_STRING_LENGTH);
@@ -110,6 +116,7 @@ db_beatmap(uint64_t i)
 	if (beatmap->music == NULL || beatmap->artist == NULL ||
 	    beatmap->title == NULL || beatmap->creator == NULL ||
 	    beatmap->version == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		beatmap_free(beatmap);
 		free(beatmap);
 		return NULL;
@@ -136,22 +143,26 @@ db_chart(uint64_t i)
 	chart_t *chart;
 	uint64_t j;
 	if (i >= entries) {
+		ERRORF("%zu: Index out of bounds\n", i);
 		return NULL;
 	}
 	snprintf(buffer, DB_STRING_LENGTH, DB_CHART_FMT, i);
 	f = fopen(buffer, "rb");
 	if (f == NULL) {
+		ERRORF("%s: %s", buffer, strerror(errno));
 		puts(buffer);
 		return NULL;
 	}
 	chart = malloc(sizeof(chart_t));
 	if (chart == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		fclose(f);
 		return NULL;
 	}
 	fread(&chart->length, sizeof(uint64_t), 1, f);
 	chart->notes = malloc(sizeof(note_t) * chart->length);
 	if (chart->notes == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		free(chart);
 		fclose(f);
 		return NULL;

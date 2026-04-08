@@ -1,4 +1,6 @@
 #include "ini.h"
+#include "log.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +18,7 @@ ini_section(FILE *file, const char *section)
 	length = strlen(section);
 	buffer = malloc(length + 2);
 	if (buffer == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return -1;
 	}
 	origin = ftell(file);
@@ -23,6 +26,9 @@ ini_section(FILE *file, const char *section)
 	if (r < 0) {
 		fseek(file, 0, SEEK_SET);
 		r = ini_section_ex(file, buffer, section, length, 0, origin);
+	}
+	if (r < 0) {
+		ERRORF("%s: Section not found\n", section);
 	}
 	free(buffer);
 	return r;
@@ -67,6 +73,7 @@ ini_value(FILE *file, const long section, const char *key)
 	length = strlen(key);
 	buffer = malloc(length + 1);
 	if (buffer == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
 	origin = ftell(file);
@@ -74,6 +81,9 @@ ini_value(FILE *file, const long section, const char *key)
 	if (r == NULL) {
 		fseek(file, section, SEEK_SET);
 		r = ini_value_ex(file, buffer, key, length, origin);
+	}
+	if (r == NULL) {
+		ERRORF("%s: Key not found\n", key);
 	}
 	free(buffer);
 	return r;
@@ -124,6 +134,7 @@ ini_value_ex(FILE *file, char *buffer, const char *key,
 	capacity = INI_STRING_LENGTH;
 	value = malloc(capacity);
 	if (value == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
 	i = 0;
@@ -136,6 +147,8 @@ ini_value_ex(FILE *file, char *buffer, const char *key,
 			capacity *= 2;
 			tmp = realloc(value, capacity);
 			if (tmp == NULL) {
+				ERRORF("Failed to reallocate buffer: %s\n",
+				       strerror(errno));
 				break;
 			}
 			value = tmp;
