@@ -12,7 +12,7 @@ extern "C" {
 int
 osz_import(zip_t *z);
 FILE *
-osz_osu(zip_t *z, uint64_t i);
+osz_file(zip_t *z, size_t size, uint64_t i);
 
 #ifdef __cplusplus
 }

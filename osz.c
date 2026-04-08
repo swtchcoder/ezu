@@ -15,9 +15,19 @@ osz_import(zip_t *z)
 	beatmap_t *beatmap;
 	chart_t *chart;
 	int count = 0;
+	struct zip_stat zs;
+	char *c;
 	entries = zip_get_num_entries(z, 0);
 	for (i = 0; i < entries; i++) {
-		f = osz_osu(z, i);
+		zip_stat_index(z, i, 0, &zs);
+		c = strrchr(zs.name, '.');
+		if (c == NULL) {
+			continue;
+		}
+		if (strcmp(c, ".osu") != 0) {
+			continue;
+		}
+		f = osz_file(z, zs.size, i);
 		if (f == NULL) {
 			continue;
 		}
@@ -49,38 +59,28 @@ osz_import(zip_t *z)
 }
 
 FILE *
-osz_osu(zip_t *z, uint64_t i)
+osz_file(zip_t *z, size_t size, uint64_t i)
 {
 	zip_file_t *zf;
-	struct zip_stat zs;
-	char *c;
 	char *buf;
 	FILE *f;
-	zip_stat_index(z, i, 0, &zs);
-	c = strrchr(zs.name, '.');
-	if (c == NULL) {
-		return NULL;
-	}
-	if (strcmp(c, ".osu") != 0) {
-		return NULL;
-	}
 	zf = zip_fopen_index(z, i, 0);
 	if (zf == NULL) {
 		return NULL;
 	}
-	buf = malloc(zs.size);
+	buf = malloc(size);
 	if (buf == NULL) {
 		zip_fclose(zf);
 		return NULL;
 	}
-	zip_fread(zf, buf, zs.size);
+	zip_fread(zf, buf, size);
 	f = tmpfile();
 	if (f == NULL) {
 		zip_fclose(zf);
 		free(buf);
 		return NULL;
 	}
-	fwrite(buf, 1, zs.size, f);
+	fwrite(buf, 1, size, f);
 	rewind(f);
 	zip_fclose(zf);
 	return f;
