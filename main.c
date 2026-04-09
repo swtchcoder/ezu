@@ -2,37 +2,50 @@
 #include "chart.h"
 #include "db.h"
 #include "log.h"
+#include "notifications.h"
 #include "osz.h"
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_init.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <zip.h>
 
+#define NOTIFICATIONS_CAPACITY 10
+
 static int
 step(void);
 static void
-draw(void);
+render(void);
 
-static SDL_Window *w;
+static SDL_Window *window;
 static SDL_Renderer *r;
+static TTF_Font *font;
+static const SDL_Color notifications_color = {200, 200, 200, 255};
 
 int
 main(int argc, char *argv[])
 {
 	uint64_t entries, i;
+	int j;
 	beatmap_t *beatmap;
 	chart_t *chart;
 	float difficulty;
-	zip_t *z;
 	if (db_open() != 0) {
 		ERROR("Failed to open database\n");
 		return 1;
 	}
-	if (argc != 1) {
-		osz_import_path(argv[1]);
+	if (notifications_init(NOTIFICATIONS_CAPACITY) != 0) {
+		ERROR("Unable to initialize notifications\n");
 	}
 	entries = db_entries();
+	char buffer[256];
+	snprintf(buffer, 256, "Found %zu entries", entries);
+	notifications_add(buffer);
+	for (j = 1; j < argc; j++) {
+		if (osz_import_path(argv[j]) == 0) {
+			notifications_add(argv[j]);
+		}
+	}
 	for (i = 0; i < entries; i++) {
 		beatmap = db_beatmap(i);
 		if (beatmap == NULL) {
@@ -51,32 +64,42 @@ main(int argc, char *argv[])
 		printf("* length: %zu notes\n", chart->length);
 		printf("* difficulty: %.2f stars\n\n", difficulty);
 	}
+	if (TTF_Init() == 0) {
+		ERRORF("Unable to initialize SDL3_ttf: %s\n", SDL_GetError());
+		return 1;
+	}
+	font = TTF_OpenFont("font.ttf", 18);
+	if (font == NULL) {
+		ERRORF("Failed to open font: %s\n", SDL_GetError());
+		return 1;
+	}
 	if (SDL_Init(SDL_INIT_VIDEO) == 0) {
 		ERRORF("Unable to initialize SDL3: %s\n", SDL_GetError());
 		return 1;
 	}
-	w = SDL_CreateWindow("ezu", 800, 600, SDL_WINDOW_OPENGL);
-	if (w == NULL) {
+	window = SDL_CreateWindow("ezu", 800, 600, SDL_WINDOW_OPENGL);
+	if (window == NULL) {
 		ERRORF("Failed to create window: %s\n", SDL_GetError());
 		SDL_Quit();
 		return 1;
 	}
-	r = SDL_CreateRenderer(w, NULL);
+	r = SDL_CreateRenderer(window, NULL);
 	if (r == NULL) {
 		ERRORF("Failed to create renderer: %s\n", SDL_GetError());
-		SDL_DestroyWindow(w);
+		SDL_DestroyWindow(window);
 		SDL_Quit();
 		return 1;
 	}
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-	SDL_RenderClear(r);
-	SDL_RenderPresent(r);
 	while (step()) {
-		draw();
+		SDL_RenderClear(r);
+		render();
+		SDL_RenderPresent(r);
 	}
 	SDL_DestroyRenderer(r);
-	SDL_DestroyWindow(w);
+	SDL_DestroyWindow(window);
 	SDL_Quit();
+	notifications_free();
 	db_close();
 	return 0;
 }
@@ -91,13 +114,16 @@ step(void)
 			return 0;
 		}
 		if (event.type == SDL_EVENT_DROP_FILE) {
-			osz_import_path(event.drop.data);
+			if (osz_import_path(event.drop.data) == 0) {
+				notifications_add(event.drop.data);
+			}
 		}
 	}
 	return 1;
 }
 
 static void
-draw(void)
+render(void)
 {
+	notifications_render(r, font, 0, 0, notifications_color);
 }
