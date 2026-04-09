@@ -10,6 +10,24 @@
 #include <zip.h>
 
 int
+osz_import_path(const char *path)
+{
+	zip_t *z;
+	z = zip_open(path, 0, NULL);
+	if (z == NULL) {
+		ERRORF("%s: Failed to open zip file\n", path);
+		return 1;
+	}
+	if (osz_import(z) == 0) {
+		ERRORF("%s: Failed to import osz file\n", path);
+		zip_close(z);
+		return 1;
+	}
+	zip_close(z);
+	return 0;
+}
+
+int
 osz_import(zip_t *z)
 {
 	zip_int64_t entries, i;

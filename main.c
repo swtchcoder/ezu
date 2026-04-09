@@ -30,16 +30,7 @@ main(int argc, char *argv[])
 		return 1;
 	}
 	if (argc != 1) {
-		z = zip_open(argv[1], 0, NULL);
-		if (z == NULL) {
-			ERRORF("%s: Failed to open zip file\n", argv[1]);
-		} else {
-			if (osz_import(z) == 0) {
-				ERRORF("%s: Failed to import osz file\n",
-				       argv[1]);
-			}
-			zip_close(z);
-		}
+		osz_import_path(argv[1]);
 	}
 	entries = db_entries();
 	for (i = 0; i < entries; i++) {
@@ -98,6 +89,9 @@ step(void)
 	while (SDL_PollEvent(&event)) {
 		if (event.type == SDL_EVENT_QUIT) {
 			return 0;
+		}
+		if (event.type == SDL_EVENT_DROP_FILE) {
+			osz_import_path(event.drop.data);
 		}
 	}
 	return 1;
