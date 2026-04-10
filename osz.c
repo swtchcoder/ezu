@@ -33,7 +33,7 @@ osz_import(zip_t *z)
 	zip_int64_t entries, i;
 	FILE *f;
 	beatmap_t *beatmap;
-	chart_t *chart;
+	note_t *chart;
 	int count = 0;
 	struct zip_stat zs;
 	char *c;
@@ -70,12 +70,12 @@ osz_import(zip_t *z)
 			ERRORF("%s: Failed to add to database\n", zs.name);
 			beatmap_free(beatmap);
 			free(beatmap);
-			chart_free(chart);
+			array_free(chart);
 			continue;
 		}
 		beatmap_free(beatmap);
 		free(beatmap);
-		chart_free(chart);
+		array_free(chart);
 		fclose(f);
 		count++;
 	}

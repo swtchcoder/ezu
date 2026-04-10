@@ -9,6 +9,7 @@
  *         [chart length]
  *         [chart] */
 #include "db.h"
+#include "array.h"
 #include "beatmap.h"
 #include "chart.h"
 #include "log.h"
@@ -55,7 +56,7 @@ db_open(void)
 }
 
 int
-db_add(beatmap_t *beatmap, chart_t *chart)
+db_add(beatmap_t *beatmap, note_t *chart)
 {
 	FILE *f;
 	uint64_t i;
@@ -66,10 +67,11 @@ db_add(beatmap_t *beatmap, chart_t *chart)
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return 1;
 	}
-	fwrite(&chart->length, sizeof(uint64_t), 1, f);
-	for (i = 0; i < chart->length; i++) {
-		fwrite(&(chart->notes[i].time), sizeof(float), 1, f);
-		fwrite(&(chart->notes[i].lane), sizeof(char), 1, f);
+	uint64_t length = array_length(chart);
+	fwrite(&length, sizeof(uint64_t), 1, f);
+	for (i = 0; i < length; i++) {
+		fwrite(&(chart[i].time), sizeof(float), 1, f);
+		fwrite(&(chart[i].lane), sizeof(char), 1, f);
 	}
 	fclose(f);
 
@@ -121,7 +123,6 @@ db_beatmap(uint64_t i)
 		free(beatmap);
 		return NULL;
 	}
-
 	fseek(global,
 	      sizeof(uint16_t) + sizeof(uint64_t) +
 		  sizeof(char) * DB_STRING_LENGTH * 5 * i,
@@ -135,13 +136,13 @@ db_beatmap(uint64_t i)
 	return beatmap;
 }
 
-chart_t *
+note_t *
 db_chart(uint64_t i)
 {
 	FILE *f;
 	char buffer[DB_STRING_LENGTH];
-	chart_t *chart;
-	uint64_t j;
+	note_t *chart = NULL;
+	uint64_t j, length;
 	if (i >= entries) {
 		ERRORF("%zu: Index out of bounds\n", i);
 		return NULL;
@@ -153,24 +154,17 @@ db_chart(uint64_t i)
 		puts(buffer);
 		return NULL;
 	}
-	chart = malloc(sizeof(chart_t));
+	fread(&length, sizeof(uint64_t), 1, f);
+	array_init_capacity(chart, length);
 	if (chart == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
-		fclose(f);
+		ERROR("Failed to initialize array\n");
 		return NULL;
 	}
-	fread(&chart->length, sizeof(uint64_t), 1, f);
-	chart->notes = malloc(sizeof(note_t) * chart->length);
-	if (chart->notes == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
-		free(chart);
-		fclose(f);
-		return NULL;
-	}
-	for (j = 0; j < chart->length; j++) {
-		fread(&chart->notes[j].time, sizeof(float), 1, f);
-		fread(&chart->notes[j].lane, sizeof(char), 1, f);
-		chart->notes[j].hit = 0;
+	array_length_set(chart, length);
+	for (j = 0; j < length; j++) {
+		fread(&chart[j].time, sizeof(float), 1, f);
+		fread(&chart[j].lane, sizeof(char), 1, f);
+		chart[j].hit = 0;
 	}
 	fclose(f);
 	return chart;

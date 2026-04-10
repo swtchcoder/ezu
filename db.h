@@ -14,7 +14,7 @@ int
 db_open(void);
 
 int
-db_add(beatmap_t *beatmap, chart_t *chart);
+db_add(beatmap_t *beatmap, note_t *chart);
 
 uint64_t
 db_entries(void);
@@ -22,7 +22,7 @@ db_entries(void);
 beatmap_t *
 db_beatmap(uint64_t i);
 
-chart_t *
+note_t *
 db_chart(uint64_t i);
 
 void

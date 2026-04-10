@@ -10,10 +10,9 @@ extern "C" {
 #include "chart.h"
 #include <stdio.h>
 
-
 beatmap_t *
 osu_beatmap(FILE *file);
-chart_t *
+note_t *
 osu_chart(FILE *file);
 
 #ifdef __cplusplus

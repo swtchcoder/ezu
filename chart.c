@@ -1,26 +1,20 @@
 #include "chart.h"
-#include <stdlib.h>
+#include "array.h"
 
 float
-chart_difficulty(chart_t *chart)
+chart_difficulty(note_t *chart)
 {
 	unsigned long long i;
 	float difficulty, difference;
+	uint64_t length;
+	length = array_length(chart);
 	difficulty = 0.0f;
-	for (i = 1; i < chart->length; i++) {
-		difference = chart->notes[i].time - chart->notes[i - 1].time;
+	for (i = 1; i < length; i++) {
+		difference = chart[i].time - chart[i - 1].time;
 		if (difference == 0.0f) {
 			difference = 1.0f;
 		}
 		difficulty += 0.001f / difference;
 	}
 	return difficulty;
-}
-
-void
-chart_free(chart_t *chart)
-{
-	free(chart->notes);
-	chart->notes = NULL;
-	free(chart);
 }

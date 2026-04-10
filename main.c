@@ -28,7 +28,7 @@ main(int argc, char *argv[])
 	uint64_t entries, i;
 	int j;
 	beatmap_t *beatmap;
-	chart_t *chart;
+	note_t *chart;
 	float difficulty;
 	if (db_open() != 0) {
 		ERROR("Failed to open database\n");
@@ -55,14 +55,17 @@ main(int argc, char *argv[])
 		chart = db_chart(i);
 		if (chart == NULL) {
 			ERRORF("%zu: Could not parse chart\n", i);
+			beatmap_free(beatmap);
 			continue;
 		}
 		difficulty = chart_difficulty(chart);
 		printf("%s - %s (%s) [%s]\n", beatmap->artist, beatmap->title,
 		       beatmap->creator, beatmap->version);
 		printf("* music: %s\n", beatmap->music);
-		printf("* length: %zu notes\n", chart->length);
+		printf("* length: %zu notes\n", array_length(chart));
 		printf("* difficulty: %.2f stars\n\n", difficulty);
+		beatmap_free(beatmap);
+		array_free(chart);
 	}
 	if (TTF_Init() == 0) {
 		ERRORF("Unable to initialize SDL3_ttf: %s\n", SDL_GetError());
