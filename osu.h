@@ -8,12 +8,13 @@ extern "C" {
 
 #include "beatmap.h"
 #include "chart.h"
+#include "ini.h"
 #include <stdio.h>
 
 beatmap_t *
-osu_beatmap(FILE *file);
+osu_beatmap(ini_t *ini);
 note_t *
-osu_chart(FILE *file);
+osu_chart(ini_t *ini);
 
 #ifdef __cplusplus
 }

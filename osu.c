@@ -12,9 +12,8 @@
 #define OSU_CAPACITY 2
 
 beatmap_t *
-osu_beatmap(FILE *file)
+osu_beatmap(ini_t *ini)
 {
-	long section;
 	char *value;
 	beatmap_t *beatmap;
 
@@ -24,17 +23,16 @@ osu_beatmap(FILE *file)
 		return NULL;
 	}
 
-	section = ini_section(file, "General");
-	if (section < 0) {
+	if (ini_section(ini, "General") != 0) {
 		return NULL;
 	}
-	value = ini_value(file, section, "AudioFilename");
+	value = ini_value(ini, "AudioFilename");
 	if (value == NULL) {
 		return NULL;
 	}
 	beatmap->music = value;
 
-	value = ini_value(file, section, "Mode");
+	value = ini_value(ini, "Mode");
 	if (value == NULL) {
 		return NULL;
 	}
@@ -44,30 +42,29 @@ osu_beatmap(FILE *file)
 	}
 	free(value);
 
-	section = ini_section(file, "Metadata");
-	if (section < 0) {
+	if (ini_section(ini, "Metadata") != 0) {
 		return NULL;
 	}
 
-	value = ini_value(file, section, "Title");
+	value = ini_value(ini, "Title");
 	if (value == NULL) {
 		return NULL;
 	}
 	beatmap->title = value;
 
-	value = ini_value(file, section, "Artist");
+	value = ini_value(ini, "Artist");
 	if (value == NULL) {
 		return NULL;
 	}
 	beatmap->artist = value;
 
-	value = ini_value(file, section, "Creator");
+	value = ini_value(ini, "Creator");
 	if (value == NULL) {
 		return NULL;
 	}
 	beatmap->creator = value;
 
-	value = ini_value(file, section, "Version");
+	value = ini_value(ini, "Version");
 	if (value == NULL) {
 		return NULL;
 	}
@@ -76,16 +73,14 @@ osu_beatmap(FILE *file)
 }
 
 note_t *
-osu_chart(FILE *file)
+osu_chart(ini_t *ini)
 {
 	long section;
-	char buffer[256];
 	int x, y, time_ms, type;
 	float t;
 	char lane;
 	note_t *notes = NULL;
-	section = ini_section(file, "HitObjects");
-	if (section < 0) {
+	if (ini_section(ini, "HitObjects") != 0) {
 		return NULL;
 	}
 	array_init(notes);
@@ -93,9 +88,9 @@ osu_chart(FILE *file)
 		ERROR("Failed to initialize array\n");
 		return NULL;
 	}
-	while (fgets(buffer, sizeof(buffer), file)) {
-		if (sscanf(buffer, "%d,%d,%d,%d", &x, &y, &time_ms, &type) !=
-		    4) {
+	do {
+		if (sscanf(ini->cursor, "%d,%d,%d,%d", &x, &y, &time_ms,
+			   &type) != 4) {
 			ERROR("Failed to scan note data\n");
 			continue;
 		}
@@ -107,6 +102,12 @@ osu_chart(FILE *file)
 			lane = 3;
 		}
 		array_append(notes, ((note_t){.time = t, .lane = lane}));
-	}
+		while (*ini->cursor != '\n' && *ini->cursor != '\0') {
+			ini->cursor++;
+		}
+		if (*ini->cursor == '\n') {
+			ini->cursor++;
+		}
+	} while (*ini->cursor != '\0' && *ini->cursor != '[');
 	return notes;
 }

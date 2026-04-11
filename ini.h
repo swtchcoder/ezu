@@ -7,17 +7,24 @@ extern "C" {
 
 #include <stdio.h>
 
-long
-ini_section(FILE *file, const char *section);
-long
-ini_section_ex(FILE *file, char *buffer, const char *section,
-	       const unsigned long long length, const long origin,
-	       const long count);
+#define ini_free(ini) free(ini)
+
+typedef struct {
+	char *origin;
+	char *cursor;
+	char *section;
+} ini_t;
+
+ini_t *
+ini_init(char *origin);
+int
+ini_section(ini_t *ini, const char *section);
+int
+ini_section_ex(ini_t *ini, const char *section, const size_t length, char *end);
 char *
-ini_value(FILE *file, const long section, const char *key);
+ini_value(ini_t *ini, const char *key);
 char *
-ini_value_ex(FILE *file, char *buffer, const char *key,
-	     const unsigned long long length, const long count);
+ini_value_ex(ini_t *ini, const char *key, const size_t length, char *end);
 
 #ifdef __cplusplus
 }

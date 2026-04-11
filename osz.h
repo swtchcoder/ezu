@@ -5,6 +5,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include "ini.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <zip.h>
@@ -13,8 +14,8 @@ int
 osz_import_path(const char *path);
 int
 osz_import(zip_t *z);
-FILE *
-osz_file(zip_t *z, size_t size, uint64_t i);
+ini_t *
+osz_osu(zip_t *z, size_t size, uint64_t i);
 
 #ifdef __cplusplus
 }

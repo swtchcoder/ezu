@@ -8,129 +8,115 @@
 #define INI_SEPARATOR ':'
 #define INI_STRING_LENGTH 128
 
-long
-ini_section(FILE *file, const char *section)
+ini_t *
+ini_init(char *origin)
 {
-	unsigned long long length;
-	char *buffer;
-	long origin;
-	long r = 0;
-	length = strlen(section);
-	buffer = malloc(length + 2);
-	if (buffer == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
-		return -1;
-	}
-	origin = ftell(file);
-	r = ini_section_ex(file, buffer, section, length, origin, -1);
-	if (r < 0) {
-		fseek(file, 0, SEEK_SET);
-		r = ini_section_ex(file, buffer, section, length, 0, origin);
-	}
-	if (r < 0) {
-		ERRORF("%s: Section not found\n", section);
-	}
-	free(buffer);
-	return r;
-}
-
-long
-ini_section_ex(FILE *file, char *buffer, const char *section,
-	       const unsigned long long length, const long origin,
-	       const long count)
-{
-	int c;
-	long readen = 0;
-	do {
-		if (readen == count) {
-			break;
-		}
-		readen++;
-		c = fgetc(file);
-		if (c != '[') {
-			continue;
-		}
-		fgets(buffer, length + 2, file);
-		readen += length + 2;
-		if (buffer[length] != ']') {
-			continue;
-		}
-		if (strncmp(section, buffer, length) != 0) {
-			continue;
-		}
-		return origin + readen;
-	} while (c != EOF);
-	return -1;
-}
-
-char *
-ini_value(FILE *file, const long section, const char *key)
-{
-	unsigned long long length;
-	char *buffer;
-	long origin;
-	char *r;
-	length = strlen(key);
-	buffer = malloc(length + 1);
-	if (buffer == NULL) {
+	ini_t *ini;
+	ini = malloc(sizeof(ini_t));
+	if (ini == NULL) {
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
-	origin = ftell(file);
-	r = ini_value_ex(file, buffer, key, length, -1);
-	if (r == NULL) {
-		fseek(file, section, SEEK_SET);
-		r = ini_value_ex(file, buffer, key, length, origin);
+	ini->origin = origin;
+	ini->cursor = origin;
+	ini->section = origin;
+	return ini;
+}
+
+int
+ini_section(ini_t *ini, const char *section)
+{
+	unsigned long long length;
+	char *buffer;
+	char *origin;
+	char *end;
+	length = strlen(section);
+	origin = ini->cursor;
+	if (ini_section_ex(ini, section, length, NULL) == 0) {
+		return 0;
 	}
-	if (r == NULL) {
-		ERRORF("%s: Key not found\n", key);
+	end = ini->cursor;
+	ini->cursor = ini->origin;
+	if (ini_section_ex(ini, section, length, end) == 0) {
+		return 0;
 	}
-	free(buffer);
+	ERRORF("%s: Section not found\n", section);
+	return 1;
+}
+
+int
+ini_section_ex(ini_t *ini, const char *section, const size_t length, char *end)
+{
+	while (ini->cursor != end && *ini->cursor != '\0') {
+		if (*ini->cursor != '[') {
+			ini->cursor++;
+			continue;
+		}
+		if (ini->cursor[length + 1] != ']') {
+			ini->cursor++;
+			continue;
+		}
+		ini->cursor++;
+		if (strncmp(section, ini->cursor, length) != 0) {
+			ini->cursor++;
+			continue;
+		}
+		ini->cursor += length + 1;
+		ini->section = ini->cursor;
+		return 0;
+	}
+	return 1;
+}
+
+char *
+ini_value(ini_t *ini, const char *key)
+{
+	size_t length;
+	char *end;
+	char *r;
+	length = strlen(key);
+	end = ini->cursor;
+	r = ini_value_ex(ini, key, length, NULL);
+	if (r == NULL) {
+		ini->cursor = ini->section;
+		r = ini_value_ex(ini, key, length, end);
+		if (r == NULL) {
+			ERRORF("%s: Key not found\n", key);
+			return NULL;
+		}
+	}
 	return r;
 }
 
 char *
-ini_value_ex(FILE *file, char *buffer, const char *key,
-	     const unsigned long long length, const long count)
+ini_value_ex(ini_t *ini, const char *key, const size_t length, char *end)
 {
-	int c;
 	int ok = 0;
 	long i, capacity;
 	char *value, *tmp;
 	i = 0;
-	do {
-		if (i == count) {
-			return NULL;
-		}
-		i++;
-		c = fgetc(file);
-		if (c == EOF) {
-			return NULL;
-		}
-		if (c != key[0]) {
+	while (ini->cursor != end && *ini->cursor != '\0') {
+		if (*ini->cursor != key[0]) {
+			ini->cursor++;
 			continue;
 		}
-		fgets(buffer, length, file);
-		if (strncmp(key + 1, buffer, length - 1) != 0) {
+		if (strncmp(key, ini->cursor, length) != 0) {
+			ini->cursor++;
 			continue;
+		}
+		ini->cursor++;
+		while (*ini->cursor != INI_SEPARATOR) {
+			ini->cursor++;
 		}
 		ok = 1;
-		do {
-			c = fgetc(file);
-			if ((c != ' ' && c != INI_SEPARATOR) || c == EOF) {
-				ok = 0;
-			}
-		} while (c != INI_SEPARATOR);
-		if (ok == 1) {
-			break;
-		}
-	} while (1);
+		break;
+	}
+	if (ok == 0) {
+		return NULL;
+	}
 	do {
-		c = fgetc(file);
-		if (c == EOF) {
-			return NULL;
-		}
-	} while (c == ' ');
+		ini->cursor++;
+	} while (*ini->cursor == ' ');
 	capacity = INI_STRING_LENGTH;
 	value = malloc(capacity);
 	if (value == NULL) {
@@ -139,7 +125,8 @@ ini_value_ex(FILE *file, char *buffer, const char *key,
 	}
 	i = 0;
 	while (1) {
-		if (c == '\r' || c == '\n' || c == EOF) {
+		if (*ini->cursor == '\r' || *ini->cursor == '\n' ||
+		    *ini->cursor == '\0') {
 			value[i] = '\0';
 			return value;
 		}
@@ -153,8 +140,8 @@ ini_value_ex(FILE *file, char *buffer, const char *key,
 			}
 			value = tmp;
 		}
-		value[i++] = c;
-		c = fgetc(file);
+		value[i++] = *ini->cursor;
+		ini->cursor++;
 	}
 	free(value);
 	return NULL;

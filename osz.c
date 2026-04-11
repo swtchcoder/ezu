@@ -31,7 +31,7 @@ int
 osz_import(zip_t *z)
 {
 	zip_int64_t entries, i;
-	FILE *f;
+	ini_t *ini;
 	beatmap_t *beatmap;
 	note_t *chart;
 	int count = 0;
@@ -48,20 +48,20 @@ osz_import(zip_t *z)
 			continue;
 		}
 
-		f = osz_file(z, zs.size, i);
-		if (f == NULL) {
+		ini = osz_osu(z, zs.size, i);
+		if (ini == NULL) {
 			continue;
 		}
-		beatmap = osu_beatmap(f);
+		beatmap = osu_beatmap(ini);
 		if (beatmap == NULL) {
 			ERRORF("%s: Failed to parse beatmap\n", zs.name);
-			fclose(f);
+			ini_free(ini);
 			continue;
 		}
-		chart = osu_chart(f);
+		chart = osu_chart(ini);
 		if (chart == NULL) {
 			ERRORF("%s: Failed to parse chart\n", zs.name);
-			fclose(f);
+			ini_free(ini);
 			beatmap_free(beatmap);
 			free(beatmap);
 			continue;
@@ -76,18 +76,18 @@ osz_import(zip_t *z)
 		beatmap_free(beatmap);
 		free(beatmap);
 		array_free(chart);
-		fclose(f);
+		ini_free(ini);
 		count++;
 	}
 	return count;
 }
 
-FILE *
-osz_file(zip_t *z, size_t size, uint64_t i)
+ini_t *
+osz_osu(zip_t *z, size_t size, uint64_t i)
 {
 	zip_file_t *zf;
 	char *buf;
-	FILE *f;
+	ini_t *ini;
 	zf = zip_fopen_index(z, i, 0);
 	if (zf == NULL) {
 		ERRORF("Failed to open archived file: %s\n", strerror(errno));
@@ -100,16 +100,8 @@ osz_file(zip_t *z, size_t size, uint64_t i)
 		return NULL;
 	}
 	zip_fread(zf, buf, size);
-	f = tmpfile();
-	if (f == NULL) {
-		ERRORF("Failed to create temporary file: %s\n",
-		       strerror(errno));
-		zip_fclose(zf);
-		free(buf);
-		return NULL;
-	}
-	fwrite(buf, 1, size, f);
-	rewind(f);
+	buf[size] = '\0';
 	zip_fclose(zf);
-	return f;
+	ini = ini_init(buf);
+	return ini;
 }
