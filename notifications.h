@@ -12,10 +12,10 @@ extern "C" {
 int
 notifications_init(uint64_t capacity);
 int
-notifications_add(const char *text);
+notifications_add(const char *text, uint64_t tick);
 void
 notifications_render(SDL_Renderer *renderer, TTF_Font *font, float x, float y,
-		     SDL_Color color);
+		     SDL_Color color, uint64_t tick);
 void
 notifications_free(void);
 

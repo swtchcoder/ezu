@@ -7,8 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char **notifications = NULL;
-static uint64_t count, _capacity, cursor;
+#define NOTIFICATION_DURATION 2000.0
+
+typedef struct {
+	char *text;
+	uint64_t tick;
+} notification_t;
+
+static notification_t *notifications = NULL;
+static uint64_t count, _capacity, head;
 
 int
 notifications_init(uint64_t capacity)
@@ -17,19 +24,19 @@ notifications_init(uint64_t capacity)
 		ERROR("Notifications are already initialized");
 		return 1;
 	}
-	notifications = calloc(capacity, sizeof(char *));
+	notifications = calloc(capacity, sizeof(notification_t));
 	if (notifications == NULL) {
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return 1;
 	}
 	_capacity = capacity;
 	count = 0;
-	cursor = 0;
+	head = 0;
 	return 0;
 }
 
 int
-notifications_add(const char *text)
+notifications_add(const char *text, uint64_t tick)
 {
 	char *buffer;
 	size_t length;
@@ -45,34 +52,52 @@ notifications_add(const char *text)
 	}
 	memcpy(buffer, text, length + 1);
 	if (count < _capacity) {
-		notifications[count] = buffer;
+		notifications[count].text = buffer;
+		notifications[count].tick = tick;
 		count++;
 	} else {
-		free(notifications[cursor]);
-		notifications[cursor] = buffer;
-		cursor++;
-		cursor %= _capacity;
+		free(notifications[head].text);
+		notifications[head].text = buffer;
+		notifications[head].tick = tick;
+		head++;
+		head %= _capacity;
 	}
 	return 0;
 }
 
 void
 notifications_render(SDL_Renderer *renderer, TTF_Font *font, float x, float y,
-		     SDL_Color color)
+		     SDL_Color color, uint64_t tick)
 {
 	uint64_t i, j;
 	char *text;
 	int offset_y = 0;
+	notification_t *n;
+	uint64_t elapsed;
+	SDL_Color _color = color;
 	for (i = 0; i < count; i++) {
 		j = i;
-		j += cursor;
+		j += head;
 		j %= _capacity;
-		text = notifications[j];
+		n = &notifications[j];
+		text = n->text;
 		if (text == NULL) {
 			continue;
 		}
+		elapsed = tick - n->tick;
+		if (elapsed >= NOTIFICATION_DURATION) {
+			free(n->text);
+			n->text = NULL;
+			head = (head + 1) % _capacity;
+			continue;
+		} else {
+			_color.a =
+			    (uint8_t)(color.a *
+				      (1.0f -
+				       (float)elapsed / NOTIFICATION_DURATION));
+		}
 		SDL_Surface *surface =
-		    TTF_RenderText_Blended(font, text, strlen(text), color);
+		    TTF_RenderText_Blended(font, text, strlen(text), _color);
 		if (surface == NULL) {
 			ERRORF("Failed to render text: %s\n", SDL_GetError());
 			continue;
@@ -101,7 +126,8 @@ notifications_free(void)
 {
 	uint64_t i;
 	for (i = 0; i < _capacity; i++) {
-		free(notifications[i]);
+		free(notifications[i].text);
+		notifications[i].text = NULL;
 	}
 	free(notifications);
 	notifications = NULL;

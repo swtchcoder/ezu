@@ -21,6 +21,7 @@ static SDL_Window *window;
 static SDL_Renderer *r;
 static TTF_Font *font;
 static const SDL_Color notifications_color = {200, 200, 200, 255};
+static uint64_t tick;
 
 int
 main(int argc, char *argv[])
@@ -40,10 +41,10 @@ main(int argc, char *argv[])
 	entries = db_entries();
 	char buffer[256];
 	snprintf(buffer, 256, "Found %zu entries", entries);
-	notifications_add(buffer);
+	notifications_add(buffer, 0);
 	for (j = 1; j < argc; j++) {
 		if (osz_import_path(argv[j]) == 0) {
-			notifications_add(argv[j]);
+			notifications_add(argv[j], 0);
 		}
 	}
 	for (i = 0; i < entries; i++) {
@@ -112,13 +113,14 @@ step(void)
 {
 	SDL_Event event;
 	SDL_Delay(1000.0 / 60.0);
+	tick = SDL_GetTicks();
 	while (SDL_PollEvent(&event)) {
 		if (event.type == SDL_EVENT_QUIT) {
 			return 0;
 		}
 		if (event.type == SDL_EVENT_DROP_FILE) {
 			if (osz_import_path(event.drop.data) == 0) {
-				notifications_add(event.drop.data);
+				notifications_add(event.drop.data, tick);
 			}
 		}
 	}
@@ -128,5 +130,5 @@ step(void)
 static void
 render(void)
 {
-	notifications_render(r, font, 0, 0, notifications_color);
+	notifications_render(r, font, 0, 0, notifications_color, tick);
 }

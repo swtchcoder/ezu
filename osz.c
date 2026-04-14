@@ -18,7 +18,7 @@ osz_import_path(const char *path)
 		ERRORF("%s: Failed to open zip file\n", path);
 		return 1;
 	}
-	if (osz_import(z) == 0) {
+	if (osz_import(z) <= 0) {
 		ERRORF("%s: Failed to import osz file\n", path);
 		zip_close(z);
 		return 1;
@@ -47,7 +47,6 @@ osz_import(zip_t *z)
 		if (strcmp(c, ".osu") != 0) {
 			continue;
 		}
-
 		ini = osz_osu(z, zs.size, i);
 		if (ini == NULL) {
 			continue;
@@ -93,7 +92,7 @@ osz_osu(zip_t *z, size_t size, uint64_t i)
 		ERRORF("Failed to open archived file: %s\n", strerror(errno));
 		return NULL;
 	}
-	buf = malloc(size);
+	buf = malloc(size + 1);
 	if (buf == NULL) {
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		zip_fclose(zf);
