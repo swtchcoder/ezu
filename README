@@ -1,0 +1,73 @@
+EZU est le nom du projet de fin d'annee que nous avons choisi pour l'oral du
+bac STI2D SIN 2026 et ce depot git est la derniere reecriture de son
+programme que j'ai entreprise seul pour me donner bonne conscience.
+
+
+
+Nous avons tous les deux des petits frères. Nous avons egalement tous les
+deux un problème commun, celui-ci est qu'il est addicte a des jeux videos qui
+ne lui stimulent ni les sens, ni la reflexion.
+
+La question est alors de comment éviter une addiction au jeux passifs et tout
+en etant ludique ?
+
+
+Notre reponse a cette question est simple, c'est de creer une borne d'arcade
+axes sur les jeux de rythme competitifs et plus precisemment sur les VSRG
+("Jeux de rythme a defilement vertical" en francais).
+
+On utilisera Raspberry PI 3 et une borne d'arcade en MDF fabriquee avec la
+decoupeuse laser de notre lycee.
+
+
+
+Nous pouvons resume le projet en 3 grandes phases :
+
+* La creation d'une surcouche OpenGL/FreeGLUT
+
+* La migration vers RAYLIB
+
+* La reecriture finale sous SDL3
+
+
+A la toute base, c'est a dire en septembre 2026, mon camarade ne connaissait,
+on peut le dire, rien a la programmation.
+
+C'est pour cela que je lui ai propose d'apprendre le C tandis que de mon
+cote, pousse par l'envie de decouverte, tente de faire une surcouche a 
+OpenGL et FreeGLUT afin d'obtenir une librairie semblable a SDL.
+
+Tout se passait bien jusqu'a ce que je touche a l'affichage de texte et que
+je suis parti tout droit en optimisation prematuree avec la generation
+d'assets avec un header metadata contenant des offsets et un fichier binaire
+commun.
+
+On pourrait se dire que c'est bien mais c'est faux. A cause de cela face a un
+bug tout bete d'affichage du texte j'ai du abandonner cette librairie qui
+etait alors devenue une monstruosite impossible a maintenire ou a debuguer.
+
+
+Vers novembre, on decide donc de migrer vers raylib qui semblait plus simple
+a debuguer et a utiliser en tant que premiere librairie pour mon collegue qui
+je le rappelle venait de debuter en C et ne savait toujours pas ce qu'etait
+un pointeur.
+
+Tout se passait dans le meilleur des mondes, le projet avancait et je
+laissait mon duo faire les menus etc.
+
+Et c'est a cet exact moment je regarde a l'interieur du projet pour merge un
+nouveau parser de maps, plus solide et rapide que l'ancien et j'ai realise
+l'erreur que j'avais commise. J'ai trop eu confiance en ses capacites et me
+suis retrouve avec un jeu complet dans un seul fichier C et qui contenait plus
+de code genere par IA que de code ecrit par un homme.
+
+Je pense egalement qu'il y a eu une negligence de notre part sur la creation
+d'un planning sur ce qu'on devait faire et c'est pour ca que je ne veux pas
+le blamer pour ca.
+
+
+Enfin arrive les vacances d'avril. Je regarde le programme, decu par moi meme
+et inquiet en vu de l'oral qui arrivait.
+
+C'est alors que j'ai cree ce depot pour au moins faire quelque chose
+de fonctionnel et qui peut durer dans le temps.
