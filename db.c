@@ -11,7 +11,6 @@
 #include "db.h"
 #include "array.h"
 #include "beatmap.h"
-#include "chart.h"
 #include "log.h"
 #include <errno.h>
 #include <stdint.h>
@@ -56,7 +55,7 @@ db_open(void)
 }
 
 int
-db_add(beatmap_t *beatmap, note_t *chart)
+db_add(metadata_t *metadata, note_t *notes)
 {
 	FILE *f;
 	uint64_t i;
@@ -67,21 +66,21 @@ db_add(beatmap_t *beatmap, note_t *chart)
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return 1;
 	}
-	uint64_t length = array_length(chart);
+	uint64_t length = array_length(notes);
 	fwrite(&length, sizeof(uint64_t), 1, f);
 	for (i = 0; i < length; i++) {
-		fwrite(&(chart[i].time), sizeof(float), 1, f);
-		fwrite(&(chart[i].lane), sizeof(char), 1, f);
+		fwrite(&(notes[i].time), sizeof(float), 1, f);
+		fwrite(&(notes[i].lane), sizeof(char), 1, f);
 	}
 	fclose(f);
 
 	fseek(global, 0, SEEK_END);
 
-	fwrite(beatmap->music, sizeof(char), DB_STRING_LENGTH, global);
-	fwrite(beatmap->artist, sizeof(char), DB_STRING_LENGTH, global);
-	fwrite(beatmap->title, sizeof(char), DB_STRING_LENGTH, global);
-	fwrite(beatmap->creator, sizeof(char), DB_STRING_LENGTH, global);
-	fwrite(beatmap->version, sizeof(char), DB_STRING_LENGTH, global);
+	fwrite(metadata->music, sizeof(char), DB_STRING_LENGTH, global);
+	fwrite(metadata->artist, sizeof(char), DB_STRING_LENGTH, global);
+	fwrite(metadata->title, sizeof(char), DB_STRING_LENGTH, global);
+	fwrite(metadata->creator, sizeof(char), DB_STRING_LENGTH, global);
+	fwrite(metadata->version, sizeof(char), DB_STRING_LENGTH, global);
 
 	entries++;
 
@@ -97,30 +96,29 @@ db_entries(void)
 	return entries;
 }
 
-beatmap_t *
-db_beatmap(uint64_t i)
+metadata_t *
+db_metadata(uint64_t i)
 {
-	beatmap_t *beatmap;
+	metadata_t *metadata;
 	if (i >= entries) {
 		ERRORF("%zu: Index out of bounds\n", i);
 		return NULL;
 	}
-	beatmap = malloc(sizeof(beatmap_t));
-	if (beatmap == NULL) {
+	metadata = malloc(sizeof(metadata_t));
+	if (metadata == NULL) {
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
-	beatmap->music = malloc(sizeof(char) * DB_STRING_LENGTH);
-	beatmap->artist = malloc(sizeof(char) * DB_STRING_LENGTH);
-	beatmap->title = malloc(sizeof(char) * DB_STRING_LENGTH);
-	beatmap->creator = malloc(sizeof(char) * DB_STRING_LENGTH);
-	beatmap->version = malloc(sizeof(char) * DB_STRING_LENGTH);
-	if (beatmap->music == NULL || beatmap->artist == NULL ||
-	    beatmap->title == NULL || beatmap->creator == NULL ||
-	    beatmap->version == NULL) {
+	metadata->music = malloc(sizeof(char) * DB_STRING_LENGTH);
+	metadata->artist = malloc(sizeof(char) * DB_STRING_LENGTH);
+	metadata->title = malloc(sizeof(char) * DB_STRING_LENGTH);
+	metadata->creator = malloc(sizeof(char) * DB_STRING_LENGTH);
+	metadata->version = malloc(sizeof(char) * DB_STRING_LENGTH);
+	if (metadata->music == NULL || metadata->artist == NULL ||
+	    metadata->title == NULL || metadata->creator == NULL ||
+	    metadata->version == NULL) {
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
-		beatmap_free(beatmap);
-		free(beatmap);
+		metadata_free(metadata);
 		return NULL;
 	}
 	fseek(global,
@@ -128,16 +126,16 @@ db_beatmap(uint64_t i)
 		  sizeof(char) * DB_STRING_LENGTH * 5 * i,
 	      SEEK_SET);
 
-	fread(beatmap->music, sizeof(char), DB_STRING_LENGTH, global);
-	fread(beatmap->artist, sizeof(char), DB_STRING_LENGTH, global);
-	fread(beatmap->title, sizeof(char), DB_STRING_LENGTH, global);
-	fread(beatmap->creator, sizeof(char), DB_STRING_LENGTH, global);
-	fread(beatmap->version, sizeof(char), DB_STRING_LENGTH, global);
-	return beatmap;
+	fread(metadata->music, sizeof(char), DB_STRING_LENGTH, global);
+	fread(metadata->artist, sizeof(char), DB_STRING_LENGTH, global);
+	fread(metadata->title, sizeof(char), DB_STRING_LENGTH, global);
+	fread(metadata->creator, sizeof(char), DB_STRING_LENGTH, global);
+	fread(metadata->version, sizeof(char), DB_STRING_LENGTH, global);
+	return metadata;
 }
 
 note_t *
-db_chart(uint64_t i)
+db_notes(uint64_t i)
 {
 	FILE *f;
 	char buffer[DB_STRING_LENGTH];

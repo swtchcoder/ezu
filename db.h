@@ -6,7 +6,6 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "beatmap.h"
-#include "chart.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -14,16 +13,16 @@ int
 db_open(void);
 
 int
-db_add(beatmap_t *beatmap, note_t *chart);
+db_add(metadata_t *metadata, note_t *notes);
 
 uint64_t
 db_entries(void);
 
-beatmap_t *
-db_beatmap(uint64_t i);
+metadata_t *
+db_metadata(uint64_t i);
 
 note_t *
-db_chart(uint64_t i);
+db_notes(uint64_t i);
 
 void
 db_close(void);

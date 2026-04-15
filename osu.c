@@ -1,7 +1,6 @@
 #include "osu.h"
 #include "array.h"
 #include "beatmap.h"
-#include "chart.h"
 #include "ini.h"
 #include "log.h"
 #include <errno.h>
@@ -11,71 +10,79 @@
 
 #define OSU_CAPACITY 2
 
-beatmap_t *
-osu_beatmap(ini_t *ini)
+metadata_t *
+osu_metadata(ini_t *ini)
 {
 	char *value;
-	beatmap_t *beatmap;
+	metadata_t *metadata;
 
-	beatmap = malloc(sizeof(beatmap_t));
-	if (beatmap == NULL) {
+	metadata = malloc(sizeof(metadata_t));
+	if (metadata == NULL) {
 		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
 		return NULL;
 	}
 
 	if (ini_section(ini, "General") != 0) {
+		free(metadata);
 		return NULL;
 	}
 	value = ini_value(ini, "AudioFilename");
 	if (value == NULL) {
+		free(metadata);
 		return NULL;
 	}
-	beatmap->music = value;
+	metadata->music = value;
 
 	value = ini_value(ini, "Mode");
 	if (value == NULL) {
+		free(metadata);
 		return NULL;
 	}
 	if (value[0] != '3') {
+		free(metadata);
 		free(value);
 		return NULL;
 	}
 	free(value);
 
 	if (ini_section(ini, "Metadata") != 0) {
+		free(metadata);
 		return NULL;
 	}
 
 	value = ini_value(ini, "Title");
 	if (value == NULL) {
+		free(metadata);
 		return NULL;
 	}
-	beatmap->title = value;
+	metadata->title = value;
 
 	value = ini_value(ini, "Artist");
 	if (value == NULL) {
+		free(metadata);
 		return NULL;
 	}
-	beatmap->artist = value;
+	metadata->artist = value;
 
 	value = ini_value(ini, "Creator");
 	if (value == NULL) {
+		free(metadata);
 		return NULL;
 	}
-	beatmap->creator = value;
+	metadata->creator = value;
 
 	value = ini_value(ini, "Version");
 	if (value == NULL) {
+		free(metadata);
 		return NULL;
 	}
-	beatmap->version = value;
-	return beatmap;
+	metadata->version = value;
+	return metadata;
 }
 
 note_t *
-osu_chart(ini_t *ini)
+osu_notes(ini_t *ini)
 {
-	long section;
 	int x, y, time_ms, type;
 	float t;
 	char lane;

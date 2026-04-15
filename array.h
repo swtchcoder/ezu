@@ -16,12 +16,12 @@ extern "C" {
 
 #define array_init_capacity(array, _capacity)                                  \
 	do {                                                                   \
-		array_header_t *header = malloc(sizeof(*array) * _capacity +   \
-						sizeof(array_header_t));       \
+		array_header_t *header = malloc(                               \
+		    sizeof(*(array)) * (_capacity) + sizeof(array_header_t));  \
 		if (header == NULL) {                                          \
 			ERRORF("Failed to allocate buffer: %s\n",              \
 			       strerror(errno));                               \
-			break;                                                 \
+			exit(1);                                               \
 		}                                                              \
 		header->count = 0;                                             \
 		header->capacity = _capacity;                                  \
@@ -33,14 +33,15 @@ extern "C" {
 		array_header_t *header = (array_header_t *)(array) - 1;        \
 		if (header->count >= header->capacity) {                       \
 			header->capacity *= 2;                                 \
-			header = realloc(header,                               \
-					 sizeof(*array) * header->capacity +   \
-					     sizeof(array_header_t));          \
-			if (header == NULL) {                                  \
+			array_header_t *tmp = realloc(                         \
+			    header, sizeof(*(array)) * header->capacity +      \
+					sizeof(array_header_t));               \
+			if (tmp == NULL) {                                     \
 				ERRORF("Failed to reallocate buffer: %s\n",    \
 				       strerror(errno));                       \
-				break;                                         \
+				exit(1);                                       \
 			}                                                      \
+			header = tmp;                                          \
 			array = (void *)(header + 1);                          \
 		}                                                              \
 		(array)[header->count++] = item;                               \

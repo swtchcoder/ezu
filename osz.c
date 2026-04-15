@@ -1,4 +1,6 @@
 #include "osz.h"
+#include "array.h"
+#include "beatmap.h"
 #include "db.h"
 #include "log.h"
 #include "osu.h"
@@ -9,34 +11,38 @@
 #include <string.h>
 #include <zip.h>
 
-int
+metadata_t **
 osz_import_path(const char *path)
 {
 	zip_t *z;
+	metadata_t **metadatas;
 	z = zip_open(path, 0, NULL);
 	if (z == NULL) {
 		ERRORF("%s: Failed to open zip file\n", path);
-		return 1;
+		return NULL;
 	}
-	if (osz_import(z) <= 0) {
+	metadatas = osz_import(z);
+	if (metadatas == NULL) {
 		ERRORF("%s: Failed to import osz file\n", path);
 		zip_close(z);
-		return 1;
+		return NULL;
 	}
 	zip_close(z);
-	return 0;
+	return metadatas;
 }
 
-int
+metadata_t **
 osz_import(zip_t *z)
 {
 	zip_int64_t entries, i;
 	ini_t *ini;
-	beatmap_t *beatmap;
-	note_t *chart;
+	metadata_t *metadata;
+	metadata_t **metadatas = NULL;
+	note_t *notes;
 	int count = 0;
 	struct zip_stat zs;
 	char *c;
+	array_init(metadatas);
 	entries = zip_get_num_entries(z, 0);
 	for (i = 0; i < entries; i++) {
 		zip_stat_index(z, i, 0, &zs);
@@ -51,34 +57,31 @@ osz_import(zip_t *z)
 		if (ini == NULL) {
 			continue;
 		}
-		beatmap = osu_beatmap(ini);
-		if (beatmap == NULL) {
-			ERRORF("%s: Failed to parse beatmap\n", zs.name);
+		metadata = osu_metadata(ini);
+		if (metadata == NULL) {
+			ERRORF("%s: Failed to parse metadata\n", zs.name);
 			ini_free(ini);
 			continue;
 		}
-		chart = osu_chart(ini);
-		if (chart == NULL) {
+		notes = osu_notes(ini);
+		if (notes == NULL) {
 			ERRORF("%s: Failed to parse chart\n", zs.name);
 			ini_free(ini);
-			beatmap_free(beatmap);
-			free(beatmap);
+			metadata_free(metadata);
 			continue;
 		}
-		if (db_add(beatmap, chart) != 0) {
+		if (db_add(metadata, notes) != 0) {
 			ERRORF("%s: Failed to add to database\n", zs.name);
-			beatmap_free(beatmap);
-			free(beatmap);
-			array_free(chart);
+			metadata_free(metadata);
+			array_free(notes);
 			continue;
 		}
-		beatmap_free(beatmap);
-		free(beatmap);
-		array_free(chart);
+		array_append(metadatas, metadata);
+		array_free(notes);
 		ini_free(ini);
 		count++;
 	}
-	return count;
+	return metadatas;
 }
 
 ini_t *

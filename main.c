@@ -1,5 +1,5 @@
+#include "array.h"
 #include "beatmap.h"
-#include "chart.h"
 #include "db.h"
 #include "log.h"
 #include "notifications.h"
@@ -22,15 +22,14 @@ static SDL_Renderer *r;
 static TTF_Font *font;
 static const SDL_Color notifications_color = {200, 200, 200, 255};
 static uint64_t tick;
+metadata_t **metadatas;
 
 int
 main(int argc, char *argv[])
 {
 	uint64_t entries, i;
 	int j;
-	beatmap_t *beatmap;
-	note_t *chart;
-	float difficulty;
+	metadata_t *metadata;
 	if (db_open() != 0) {
 		ERROR("Failed to open database\n");
 		return 1;
@@ -47,26 +46,14 @@ main(int argc, char *argv[])
 			notifications_add(argv[j], 0);
 		}
 	}
+	array_init_capacity(metadatas, entries);
 	for (i = 0; i < entries; i++) {
-		beatmap = db_beatmap(i);
-		if (beatmap == NULL) {
+		metadata = db_metadata(i);
+		if (metadata == NULL) {
 			ERRORF("%zu: Could not parse osu beatmap\n", i);
 			continue;
 		}
-		chart = db_chart(i);
-		if (chart == NULL) {
-			ERRORF("%zu: Could not parse chart\n", i);
-			beatmap_free(beatmap);
-			continue;
-		}
-		difficulty = chart_difficulty(chart);
-		printf("%s - %s (%s) [%s]\n", beatmap->artist, beatmap->title,
-		       beatmap->creator, beatmap->version);
-		printf("* music: %s\n", beatmap->music);
-		printf("* length: %zu notes\n", array_length(chart));
-		printf("* difficulty: %.2f stars\n\n", difficulty);
-		beatmap_free(beatmap);
-		array_free(chart);
+		array_append(metadatas, metadata);
 	}
 	if (TTF_Init() == 0) {
 		ERRORF("Unable to initialize SDL3_ttf: %s\n", SDL_GetError());
@@ -105,6 +92,10 @@ main(int argc, char *argv[])
 	SDL_Quit();
 	notifications_free();
 	db_close();
+	for (i = 0; i < array_length(metadatas); i++) {
+		metadata_free(metadatas[i]);
+	}
+	array_free(metadatas);
 	return 0;
 }
 
@@ -119,8 +110,17 @@ step(void)
 			return 0;
 		}
 		if (event.type == SDL_EVENT_DROP_FILE) {
-			if (osz_import_path(event.drop.data) == 0) {
+			metadata_t **_metadatas;
+			_metadatas = osz_import_path(event.drop.data);
+			if (_metadatas != NULL) {
+				size_t length, i;
+				length = array_length(_metadatas);
 				notifications_add(event.drop.data, tick);
+				for (i = 0; i < length; i++) {
+					array_append(metadatas, _metadatas[i]);
+				}
+				array_free(_metadatas);
+				_metadatas = NULL;
 			}
 		}
 	}

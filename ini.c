@@ -27,11 +27,8 @@ int
 ini_section(ini_t *ini, const char *section)
 {
 	unsigned long long length;
-	char *buffer;
-	char *origin;
 	char *end;
 	length = strlen(section);
-	origin = ini->cursor;
 	if (ini_section_ex(ini, section, length, NULL) == 0) {
 		return 0;
 	}
