@@ -4,25 +4,34 @@
 #include "log.h"
 #include "notifications.h"
 #include "osz.h"
+#include "text.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <zip.h>
 
+#define WINDOW_WIDTH 800.0
+#define WINDOW_HEIGHT 600.0
 #define NOTIFICATIONS_CAPACITY 10
 
 static int
 step(void);
 static void
 render(void);
+static void
+render_menu(void);
 
 static SDL_Window *window;
 static SDL_Renderer *r;
 static TTF_Font *font;
-static const SDL_Color notifications_color = {200, 200, 200, 255};
+static const SDL_Color background_color = {0, 0, 0, 255};
+static const SDL_Color text_color = {200, 200, 200, 255};
 static uint64_t tick;
 metadata_t **metadatas;
+size_t cursor = 0;
+double cursor_alpha = 0.0;
 
 int
 main(int argc, char *argv[])
@@ -68,7 +77,8 @@ main(int argc, char *argv[])
 		ERRORF("Unable to initialize SDL3: %s\n", SDL_GetError());
 		return 1;
 	}
-	window = SDL_CreateWindow("ezu", 800, 600, SDL_WINDOW_OPENGL);
+	window = SDL_CreateWindow("ezu", WINDOW_WIDTH, WINDOW_HEIGHT,
+				  SDL_WINDOW_OPENGL);
 	if (window == NULL) {
 		ERRORF("Failed to create window: %s\n", SDL_GetError());
 		SDL_Quit();
@@ -81,7 +91,8 @@ main(int argc, char *argv[])
 		SDL_Quit();
 		return 1;
 	}
-	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+	SDL_SetRenderDrawColor(r, background_color.r, background_color.g,
+			       background_color.b, background_color.a);
 	while (step()) {
 		SDL_RenderClear(r);
 		render();
@@ -123,6 +134,24 @@ step(void)
 				_metadatas = NULL;
 			}
 		}
+		if (event.type == SDL_EVENT_KEY_DOWN) {
+			switch (event.key.key) {
+			case SDLK_UP:
+				if (cursor > 0) {
+					cursor--;
+				} else {
+					cursor = array_length(metadatas) - 1;
+				}
+				break;
+			case SDLK_DOWN:
+				if (cursor + 1 < array_length(metadatas)) {
+					cursor++;
+				} else {
+					cursor = 0;
+				}
+				break;
+			}
+		}
 	}
 	return 1;
 }
@@ -130,5 +159,61 @@ step(void)
 static void
 render(void)
 {
-	notifications_render(r, font, 0, 0, notifications_color, tick);
+	render_menu();
+	SDL_SetRenderDrawColor(r, background_color.r, background_color.g,
+			       background_color.b, background_color.a);
+}
+
+static void
+render_menu(void)
+{
+	size_t i, length;
+	char *title;
+	length = array_length(metadatas);
+	cursor_alpha = cursor_alpha + ((double)cursor - cursor_alpha) * 0.3;
+	for (i = 0; i < length; i++) {
+		title = text_format("%s - %s [%s]", metadatas[i]->artist,
+				    metadatas[i]->title, metadatas[i]->version);
+		if (title == NULL) {
+			continue;
+		}
+		SDL_Surface *surface = TTF_RenderText_Blended(
+		    font, title, strlen(title),
+		    i == cursor ? background_color : text_color);
+		if (surface == NULL) {
+			ERRORF("Failed to render text: %s\n", SDL_GetError());
+			free(title);
+			continue;
+		}
+		SDL_Texture *texture = SDL_CreateTextureFromSurface(r, surface);
+		if (texture == NULL) {
+			ERRORF("Failed to create texture: %s\n",
+			       SDL_GetError());
+			SDL_DestroySurface(surface);
+			free(title);
+			continue;
+		}
+		SDL_DestroySurface(surface);
+		double t = ((double)i - cursor_alpha) * 0.1;
+		double c = cos(t);
+		if (c < 0) {
+			SDL_DestroyTexture(texture);
+			free(title);
+			continue;
+		}
+		SDL_FRect destination = {.x = c * 150.0 - 100.0,
+					 .y =
+					     WINDOW_HEIGHT / 2 + sin(t) * 400.0,
+					 .w = texture->w,
+					 .h = texture->h};
+		if (i == cursor) {
+			SDL_SetRenderDrawColor(r, text_color.r, text_color.g,
+					       text_color.b, text_color.a);
+			SDL_RenderFillRect(r, &destination);
+		}
+		SDL_RenderTexture(r, texture, NULL, &destination);
+		SDL_DestroyTexture(texture);
+		free(title);
+	}
+	notifications_render(r, font, 0, 0, text_color, tick);
 }
