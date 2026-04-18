@@ -4,6 +4,7 @@
 #include "log.h"
 #include "notifications.h"
 #include "osz.h"
+#include "shapes.h"
 #include "text.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -15,23 +16,42 @@
 #define WINDOW_WIDTH 800.0
 #define WINDOW_HEIGHT 600.0
 #define NOTIFICATIONS_CAPACITY 10
+#define VISIBLE_NOTES 200
+#define NOTE_FALL_TIME 500.0f
+#define LANE_WIDTH 100.0f
 
 static int
 step(void);
 static void
+handle_drop_file(SDL_Event event);
+static void
+handle_key_down(SDL_Event event);
+static void
 render(void);
 static void
 render_menu(void);
+static void
+render_game(void);
 
 static SDL_Window *window;
 static SDL_Renderer *r;
 static TTF_Font *font;
+
 static const SDL_Color background_color = {0, 0, 0, 255};
 static const SDL_Color text_color = {200, 200, 200, 255};
+
 static uint64_t tick;
-metadata_t **metadatas;
-size_t cursor = 0;
-double cursor_alpha = 0.0;
+
+static metadata_t **metadatas;
+
+static size_t cursor = 0;
+static double cursor_alpha = 0.0;
+
+static int ingame = 0;
+
+static note_t *notes;
+static uint64_t start;
+static size_t notes_cursor;
 
 int
 main(int argc, char *argv[])
@@ -120,46 +140,86 @@ step(void)
 		if (event.type == SDL_EVENT_QUIT) {
 			return 0;
 		}
-		if (event.type == SDL_EVENT_DROP_FILE) {
-			metadata_t **_metadatas;
-			_metadatas = osz_import_path(event.drop.data);
-			if (_metadatas != NULL) {
-				size_t length, i;
-				length = array_length(_metadatas);
-				notifications_add(event.drop.data, tick);
-				for (i = 0; i < length; i++) {
-					array_append(metadatas, _metadatas[i]);
-				}
-				array_free(_metadatas);
-				_metadatas = NULL;
-			}
-		}
-		if (event.type == SDL_EVENT_KEY_DOWN) {
-			switch (event.key.key) {
-			case SDLK_UP:
-				if (cursor > 0) {
-					cursor--;
-				} else {
-					cursor = array_length(metadatas) - 1;
-				}
-				break;
-			case SDLK_DOWN:
-				if (cursor + 1 < array_length(metadatas)) {
-					cursor++;
-				} else {
-					cursor = 0;
-				}
-				break;
-			}
-		}
+		handle_drop_file(event);
+		handle_key_down(event);
 	}
 	return 1;
 }
 
 static void
+handle_drop_file(SDL_Event event)
+{
+	if (event.type != SDL_EVENT_DROP_FILE) {
+		return;
+	}
+	metadata_t **_metadatas;
+	_metadatas = osz_import_path(event.drop.data);
+	if (_metadatas == NULL) {
+		return;
+	}
+	size_t length, i;
+	length = array_length(_metadatas);
+	notifications_add(event.drop.data, tick);
+	for (i = 0; i < length; i++) {
+		array_append(metadatas, _metadatas[i]);
+	}
+	array_free(_metadatas);
+	_metadatas = NULL;
+}
+
+static void
+handle_key_down(SDL_Event event)
+{
+	if (event.type != SDL_EVENT_KEY_DOWN) {
+		return;
+	}
+	if (ingame == 0) {
+		switch (event.key.key) {
+		case SDLK_UP:
+			if (cursor > 0) {
+				cursor--;
+			} else {
+				cursor = array_length(metadatas) - 1;
+			}
+			break;
+		case SDLK_DOWN:
+			if (cursor + 1 < array_length(metadatas)) {
+				cursor++;
+			} else {
+				cursor = 0;
+			}
+			break;
+		case SDLK_RETURN:
+			notes = db_notes(cursor);
+			if (notes == NULL) {
+				ERROR("Failed to load notes.\n");
+				return;
+			}
+			ingame = 1;
+			start = tick;
+			notes_cursor = 0;
+			break;
+		}
+		return;
+	} else {
+		switch (event.key.key) {
+		case SDLK_ESCAPE:
+			ingame = 0;
+			notes_free(notes);
+			break;
+		}
+	}
+}
+
+static void
 render(void)
 {
-	render_menu();
+	if (ingame == 0) {
+		render_menu();
+	} else {
+		render_game();
+	}
+	notifications_render(r, font, 0, 0, text_color, tick);
 	SDL_SetRenderDrawColor(r, background_color.r, background_color.g,
 			       background_color.b, background_color.a);
 }
@@ -215,5 +275,37 @@ render_menu(void)
 		SDL_DestroyTexture(texture);
 		free(title);
 	}
-	notifications_render(r, font, 0, 0, text_color, tick);
+}
+
+static void
+render_game(void)
+{
+	size_t i;
+	float x, y;
+	note_t *note;
+	int64_t dt;
+	float hit_line_y = WINDOW_HEIGHT - LANE_WIDTH / 2;
+	SDL_SetRenderDrawColor(r, text_color.r, text_color.g, text_color.b,
+			       text_color.a);
+	for (i = notes_cursor; i < array_length(notes); i++) {
+		note = &notes[i];
+		dt = note->time - (tick - start);
+		if (dt >= 0.0f && dt <= NOTE_FALL_TIME + 100.0f) {
+			y = hit_line_y * (1.0f - (float)dt / NOTE_FALL_TIME);
+			x = (float)note->lane * LANE_WIDTH + WINDOW_WIDTH / 2 -
+			    3.0 * LANE_WIDTH / 2.0;
+			shapes_filled_circle(r, x, y, LANE_WIDTH / 2.0);
+		} else if (dt < 0) {
+			notes_cursor++;
+			if (!note->hit) {
+				note->hit = 1;
+			}
+		}
+	}
+	for (i = 0; i < 4; i++) {
+		shapes_outlined_circle(r,
+				       i * LANE_WIDTH + WINDOW_WIDTH / 2 -
+					   3.0 * LANE_WIDTH / 2.0,
+				       hit_line_y, LANE_WIDTH / 2.0);
+	}
 }

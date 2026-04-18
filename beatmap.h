@@ -14,8 +14,8 @@ typedef struct {
 } metadata_t;
 
 typedef struct {
-	float time;
-	char lane;
+	int time;
+	int lane;
 	int hit;
 } note_t;
 

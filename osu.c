@@ -83,8 +83,7 @@ osu_metadata(ini_t *ini)
 note_t *
 osu_notes(ini_t *ini)
 {
-	int x, y, time_ms, type;
-	float t;
+	int x, y, t, type;
 	char lane;
 	note_t *notes = NULL;
 	if (ini_section(ini, "HitObjects") != 0) {
@@ -96,12 +95,11 @@ osu_notes(ini_t *ini)
 		return NULL;
 	}
 	do {
-		if (sscanf(ini->cursor, "%d,%d,%d,%d", &x, &y, &time_ms,
-			   &type) != 4) {
+		if (sscanf(ini->cursor, "%d,%d,%d,%d", &x, &y, &t, &type) !=
+		    4) {
 			ERROR("Failed to scan note data\n");
 			continue;
 		}
-		t = time_ms / 1000.0f;
 		lane = x * 4 / 512;
 		if (lane < 0) {
 			lane = 0;

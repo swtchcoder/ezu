@@ -69,8 +69,8 @@ db_add(metadata_t *metadata, note_t *notes)
 	uint64_t length = array_length(notes);
 	fwrite(&length, sizeof(uint64_t), 1, f);
 	for (i = 0; i < length; i++) {
-		fwrite(&(notes[i].time), sizeof(float), 1, f);
-		fwrite(&(notes[i].lane), sizeof(char), 1, f);
+		fwrite(&(notes[i].time), sizeof(int), 1, f);
+		fwrite(&(notes[i].lane), sizeof(int), 1, f);
 	}
 	fclose(f);
 
@@ -160,8 +160,8 @@ db_notes(uint64_t i)
 	}
 	array_length_set(chart, length);
 	for (j = 0; j < length; j++) {
-		fread(&chart[j].time, sizeof(float), 1, f);
-		fread(&chart[j].lane, sizeof(char), 1, f);
+		fread(&chart[j].time, sizeof(int), 1, f);
+		fread(&chart[j].lane, sizeof(int), 1, f);
 		chart[j].hit = 0;
 	}
 	fclose(f);
