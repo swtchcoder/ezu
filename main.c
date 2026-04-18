@@ -16,9 +16,15 @@
 #define WINDOW_WIDTH 800.0
 #define WINDOW_HEIGHT 600.0
 #define NOTIFICATIONS_CAPACITY 10
-#define VISIBLE_NOTES 200
 #define NOTE_FALL_TIME 500.0f
 #define LANE_WIDTH 100.0f
+#define MISS_ALPHA 255.0f * 0.2f
+
+#define PERFECT_OFFSET 50
+#define GREAT_OFFSET 100
+#define GOOD_OFFSET 150
+
+typedef enum { MISS = -15, GOOD = 50, GREAT = 100, PERFECT = 300 } hit_t;
 
 static int
 step(void);
@@ -26,6 +32,8 @@ static void
 handle_drop_file(SDL_Event event);
 static void
 handle_key_down(SDL_Event event);
+static void
+hit(int lane);
 static void
 render(void);
 static void
@@ -52,6 +60,11 @@ static int ingame = 0;
 static note_t *notes;
 static uint64_t start;
 static size_t notes_cursor;
+
+static hit_t hit_score;
+static int score;
+
+static float miss_alpha;
 
 int
 main(int argc, char *argv[])
@@ -198,17 +211,62 @@ handle_key_down(SDL_Event event)
 			ingame = 1;
 			start = tick;
 			notes_cursor = 0;
+			score = 0;
+			miss_alpha = 0;
 			break;
 		}
 		return;
 	} else {
 		switch (event.key.key) {
+		case SDLK_D:
+			hit(0);
+			break;
+		case SDLK_F:
+			hit(1);
+			break;
+		case SDLK_J:
+			hit(2);
+			break;
+		case SDLK_K:
+			hit(3);
+			break;
 		case SDLK_ESCAPE:
 			ingame = 0;
 			notes_free(notes);
 			break;
 		}
 	}
+}
+
+static void
+hit(int lane)
+{
+	note_t *note = NULL;
+	int dt;
+	size_t length, i;
+	length = array_length(notes);
+	for (i = notes_cursor; i < length; i++) {
+		note = &notes[i];
+		dt = note->time - ((int64_t)tick - (int64_t)start);
+		if (note->lane == lane && !note->hit && dt < 400) {
+			break;
+		}
+	}
+	if (!note) {
+		return;
+	}
+	note->hit = true;
+	if (dt < -GOOD_OFFSET || dt > GOOD_OFFSET) {
+		hit_score = MISS;
+		miss_alpha = MISS_ALPHA;
+	} else if (dt < -GREAT_OFFSET || dt > GREAT_OFFSET) {
+		hit_score = GOOD;
+	} else if (dt < -PERFECT_OFFSET || dt > PERFECT_OFFSET) {
+		hit_score = GREAT;
+	} else {
+		hit_score = PERFECT;
+	}
+	score += hit_score;
 }
 
 static void
@@ -228,21 +286,26 @@ static void
 render_menu(void)
 {
 	size_t i, length;
-	char *title;
+	char *text;
 	length = array_length(metadatas);
 	cursor_alpha = cursor_alpha + ((double)cursor - cursor_alpha) * 0.3;
 	for (i = 0; i < length; i++) {
-		title = text_format("%s - %s [%s]", metadatas[i]->artist,
-				    metadatas[i]->title, metadatas[i]->version);
-		if (title == NULL) {
+		double t = ((double)i - cursor_alpha) * 0.1;
+		double c = cos(t);
+		if (c < 0) {
+			continue;
+		}
+		text = text_format("%s - %s [%s]", metadatas[i]->artist,
+				   metadatas[i]->title, metadatas[i]->version);
+		if (text == NULL) {
 			continue;
 		}
 		SDL_Surface *surface = TTF_RenderText_Blended(
-		    font, title, strlen(title),
+		    font, text, strlen(text),
 		    i == cursor ? background_color : text_color);
+		free(text);
 		if (surface == NULL) {
 			ERRORF("Failed to render text: %s\n", SDL_GetError());
-			free(title);
 			continue;
 		}
 		SDL_Texture *texture = SDL_CreateTextureFromSurface(r, surface);
@@ -250,17 +313,9 @@ render_menu(void)
 			ERRORF("Failed to create texture: %s\n",
 			       SDL_GetError());
 			SDL_DestroySurface(surface);
-			free(title);
 			continue;
 		}
 		SDL_DestroySurface(surface);
-		double t = ((double)i - cursor_alpha) * 0.1;
-		double c = cos(t);
-		if (c < 0) {
-			SDL_DestroyTexture(texture);
-			free(title);
-			continue;
-		}
 		SDL_FRect destination = {.x = c * 150.0 - 100.0,
 					 .y =
 					     WINDOW_HEIGHT / 2 + sin(t) * 400.0,
@@ -273,7 +328,6 @@ render_menu(void)
 		}
 		SDL_RenderTexture(r, texture, NULL, &destination);
 		SDL_DestroyTexture(texture);
-		free(title);
 	}
 }
 
@@ -285,20 +339,29 @@ render_game(void)
 	note_t *note;
 	int64_t dt;
 	float hit_line_y = WINDOW_HEIGHT - LANE_WIDTH / 2;
+	char *text = NULL;
+	size_t length = array_length(notes);
+	text = text_format("%d", score < 0 ? 0 : score);
+	text_render(r, text, 0, 0, font, text_color);
+	free(text);
 	SDL_SetRenderDrawColor(r, text_color.r, text_color.g, text_color.b,
 			       text_color.a);
-	for (i = notes_cursor; i < array_length(notes); i++) {
+	for (i = notes_cursor; i < length; i++) {
 		note = &notes[i];
-		dt = note->time - (tick - start);
+		dt = note->time - ((int64_t)tick - (int64_t)start);
 		if (dt >= 0.0f && dt <= NOTE_FALL_TIME + 100.0f) {
 			y = hit_line_y * (1.0f - (float)dt / NOTE_FALL_TIME);
 			x = (float)note->lane * LANE_WIDTH + WINDOW_WIDTH / 2 -
 			    3.0 * LANE_WIDTH / 2.0;
 			shapes_filled_circle(r, x, y, LANE_WIDTH / 2.0);
-		} else if (dt < 0) {
+		} else if (dt < -GREAT_OFFSET) {
 			notes_cursor++;
 			if (!note->hit) {
+
 				note->hit = 1;
+				hit_score = MISS;
+				score += hit_score;
+				miss_alpha = MISS_ALPHA;
 			}
 		}
 	}
@@ -307,5 +370,15 @@ render_game(void)
 				       i * LANE_WIDTH + WINDOW_WIDTH / 2 -
 					   3.0 * LANE_WIDTH / 2.0,
 				       hit_line_y, LANE_WIDTH / 2.0);
+	}
+	if (miss_alpha >= 1.0f) {
+		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+		SDL_SetRenderDrawColor(r, 255, 0, 0, miss_alpha);
+		SDL_FRect destination = {
+		    .x = 0, .y = 0, .w = WINDOW_WIDTH, .h = WINDOW_HEIGHT};
+		SDL_RenderFillRect(r, &destination);
+		miss_alpha *= 0.9f;
+	} else {
+		miss_alpha = 0.0f;
 	}
 }
