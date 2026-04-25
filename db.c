@@ -11,7 +11,7 @@
 #include "db.h"
 #include "array.h"
 #include "beatmap.h"
-#include "log.h"
+#include "error.h"
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>

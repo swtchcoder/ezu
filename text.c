@@ -1,4 +1,4 @@
-#include "log.h"
+#include "error.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <errno.h>

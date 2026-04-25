@@ -2,7 +2,7 @@
 #include "array.h"
 #include "beatmap.h"
 #include "db.h"
-#include "log.h"
+#include "error.h"
 #include "osu.h"
 #include <errno.h>
 #include <stdint.h>

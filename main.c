@@ -1,7 +1,7 @@
 #include "array.h"
 #include "beatmap.h"
 #include "db.h"
-#include "log.h"
+#include "error.h"
 #include "notifications.h"
 #include "osz.h"
 #include "shapes.h"

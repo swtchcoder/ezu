@@ -1,5 +1,5 @@
 #include "ini.h"
-#include "log.h"
+#include "error.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
