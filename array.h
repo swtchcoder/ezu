@@ -30,7 +30,7 @@ extern "C" {
 
 #define array_append(array, item)                                              \
 	do {                                                                   \
-		array_header_t *header = (array_header_t *)(array) - 1;        \
+		array_header_t *header = array_header(array);                  \
 		if (header->count >= header->capacity) {                       \
 			header->capacity *= 2;                                 \
 			array_header_t *tmp = realloc(                         \
@@ -50,7 +50,9 @@ extern "C" {
 #define array_length_set(array, length)                                        \
 	((array_header_t *)(array) - 1)->count = length
 
-#define array_length(array) ((array_header_t *)(array) - 1)->count
+#define array_length(array) array_header(array)->count
+
+#define array_header(array) ((array_header_t *)(array) - 1)
 
 #define array_free(array) free((array_header_t *)(array) - 1)
 

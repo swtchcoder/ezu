@@ -1,4 +1,5 @@
 #include "notifications.h"
+#include "circular_array.h"
 #include "error.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -14,8 +15,10 @@ typedef struct {
 	uint64_t tick;
 } notification_t;
 
+static void
+notification_free(notification_t *notification);
+
 static notification_t *notifications = NULL;
-static uint64_t count, _capacity, head;
 
 int
 notifications_init(uint64_t capacity)
@@ -24,14 +27,7 @@ notifications_init(uint64_t capacity)
 		ERROR("Notifications are already initialized");
 		return 1;
 	}
-	notifications = calloc(capacity, sizeof(notification_t));
-	if (notifications == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
-		return 1;
-	}
-	_capacity = capacity;
-	count = 0;
-	head = 0;
+	circular_array_init(notifications, capacity);
 	return 0;
 }
 
@@ -51,17 +47,9 @@ notifications_add(const char *text, uint64_t tick)
 		return 1;
 	}
 	memcpy(buffer, text, length + 1);
-	if (count < _capacity) {
-		notifications[count].text = buffer;
-		notifications[count].tick = tick;
-		count++;
-	} else {
-		free(notifications[head].text);
-		notifications[head].text = buffer;
-		notifications[head].tick = tick;
-		head++;
-		head %= _capacity;
-	}
+	circular_array_push(notifications,
+			    ((notification_t){.text = buffer, .tick = tick}),
+			    notification_free);
 	return 0;
 }
 
@@ -69,26 +57,22 @@ void
 notifications_render(SDL_Renderer *renderer, TTF_Font *font, float x, float y,
 		     SDL_Color color, uint64_t tick)
 {
-	uint64_t i, j;
+	size_t i, j;
 	char *text;
 	int offset_y = 0;
-	notification_t *n;
+	notification_t n;
 	uint64_t elapsed;
 	SDL_Color _color = color;
-	for (i = 0; i < count; i++) {
-		j = i;
-		j += head;
-		j %= _capacity;
-		n = &notifications[j];
-		text = n->text;
+	circular_array_header_t *header = circular_array_header(notifications);
+	for (i = 0; i < header->count; i++) {
+		n = circular_array_get(notifications, i);
+		text = n.text;
 		if (text == NULL) {
 			continue;
 		}
-		elapsed = tick - n->tick;
+		elapsed = tick - n.tick;
 		if (elapsed >= NOTIFICATION_DURATION) {
-			free(n->text);
-			n->text = NULL;
-			head = (head + 1) % _capacity;
+			header->head = (header->head + 1) % header->capacity;
 			continue;
 		} else {
 			_color.a =
@@ -121,15 +105,21 @@ notifications_render(SDL_Renderer *renderer, TTF_Font *font, float x, float y,
 	}
 }
 
+static void
+notification_free(notification_t *notification)
+{
+	free(notification->text);
+	notification->text = NULL;
+}
+
 void
 notifications_free(void)
 {
 	uint64_t i;
-	for (i = 0; i < _capacity; i++) {
+	for (i = 0; i < circular_array_header(notifications)->capacity; i++) {
 		free(notifications[i].text);
 		notifications[i].text = NULL;
 	}
-	free(notifications);
+	circular_array_free(notifications);
 	notifications = NULL;
-	_capacity = 0;
 }
