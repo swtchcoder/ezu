@@ -1,3 +1,10 @@
+# EZU
+Un jeu de rythme base sur osu!mania
+
+<details>
+
+<summary>Histoire</summary>
+
 EZU est le nom du projet de fin d'annee que nous avons choisi pour l'oral du
 bac STI2D SIN 2026 et ce depot git est la derniere reecriture de son
 programme que j'ai entreprise seul pour me donner bonne conscience.
@@ -71,3 +78,16 @@ et inquiet en vu de l'oral qui arrivait.
 
 C'est alors que j'ai cree ce depot pour au moins faire quelque chose
 de fonctionnel et qui peut durer dans le temps.
+
+</details>
+
+## Compilation
+En plus du compilateur `gcc` il vous faudra ces librairies :
+* `SDL3`
+* `SDL3_ttf`
+
+```
+make release
+# ou pour debug avec gdb
+make debug
+```
