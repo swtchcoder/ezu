@@ -1,12 +1,10 @@
 #include "osu.h"
 #include "array.h"
 #include "beatmap.h"
-#include "ini.h"
 #include "error.h"
-#include <errno.h>
+#include "ini.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define OSU_CAPACITY 2
 
@@ -18,7 +16,7 @@ osu_metadata(ini_t *ini)
 
 	metadata = malloc(sizeof(metadata_t));
 	if (metadata == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
+		PERROR("Failed to allocate buffer");
 		return NULL;
 	}
 

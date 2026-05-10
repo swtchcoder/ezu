@@ -4,7 +4,6 @@
 #include "db.h"
 #include "error.h"
 #include "osu.h"
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,12 +91,12 @@ osz_osu(zip_t *z, size_t size, uint64_t i)
 	ini_t *ini;
 	zf = zip_fopen_index(z, i, 0);
 	if (zf == NULL) {
-		ERRORF("Failed to open archived file: %s\n", strerror(errno));
+		PERROR("Failed to open archived file");
 		return NULL;
 	}
 	buf = malloc(size + 1);
 	if (buf == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
+		PERROR("Failed to allocate buffer");
 		zip_fclose(zf);
 		return NULL;
 	}

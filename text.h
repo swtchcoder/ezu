@@ -9,6 +9,8 @@ extern "C" {
 #include <SDL3_ttf/SDL_ttf.h>
 
 char *
+text_copy(const char *text);
+char *
 text_format(const char *fmt, ...);
 int
 text_render(SDL_Renderer *r, const char *text, float x, float y, TTF_Font *f,

@@ -10,7 +10,7 @@ extern "C" {
 #include <stdio.h>
 
 int
-db_open(void);
+db_open(const char *directory);
 
 int
 db_add(metadata_t *metadata, note_t *notes);

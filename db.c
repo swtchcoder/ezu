@@ -11,12 +11,13 @@
 #include "db.h"
 #include "array.h"
 #include "beatmap.h"
+#include "directory.h"
 #include "error.h"
-#include <errno.h>
+#include "path.h"
+#include "text.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define DB_CHART_FMT "c%zu.dat"
 /* DB_STRING_LENGTH must be lower or equal to INI_STRING_LENGTH */
@@ -25,18 +26,31 @@
 static const uint16_t db_version = 1;
 static FILE *global = NULL;
 static uint64_t entries = 0;
+static char *_directory = NULL;
 
 int
-db_open(void)
+db_open(const char *directory)
 {
 	uint16_t version;
+	char *filename;
 	if (global != NULL) {
+		ERROR("Database already opened\n");
 		return 1;
 	}
-	global = fopen("global.dat", "rb+");
+	_directory = text_copy(directory);
+	mkdirall(_directory, 0755);
+	filename = path_join(_directory, "global.dat");
+	if (filename == NULL) {
+		ERROR("Failed to join global.dat path\n");
+		return 1;
+	}
+	global = fopen(filename, "rb+");
 	if (global == NULL) {
-		global = fopen("global.dat", "wb+");
+		global = fopen(filename, "wb+");
 		if (global == NULL) {
+			PERROR(filename);
+			free(filename);
+			filename = NULL;
 			return 1;
 		}
 		fwrite(&db_version, sizeof(uint16_t), 1, global);
@@ -45,12 +59,17 @@ db_open(void)
 	} else {
 		fread(&version, sizeof(uint16_t), 1, global);
 		if (version != db_version) {
+			ERRORF("%s: Wrong DB version\n", filename);
+			free(filename);
+			filename = NULL;
 			fclose(global);
 			global = NULL;
 			return 1;
 		}
 		fread(&entries, sizeof(uint64_t), 1, global);
 	}
+	free(filename);
+	filename = NULL;
 	return 0;
 }
 
@@ -59,11 +78,23 @@ db_add(metadata_t *metadata, note_t *notes)
 {
 	FILE *f;
 	uint64_t i;
-	char buffer[DB_STRING_LENGTH];
-	snprintf(buffer, DB_STRING_LENGTH, DB_CHART_FMT, entries);
-	f = fopen(buffer, "wb");
+	char *buffer = NULL;
+	char *filename = NULL;
+	buffer = text_format(DB_CHART_FMT, entries);
+	if (buffer == NULL) {
+		ERROR("Failed to get filename");
+		return 1;
+	}
+	filename = path_join(_directory, buffer);
+	if (buffer == NULL) {
+		ERROR("Failed to join filename");
+		free(buffer);
+		buffer = NULL;
+		return 1;
+	}
+	f = fopen(filename, "wb");
 	if (f == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
+		PERROR("Failed to allocate buffer");
 		return 1;
 	}
 	uint64_t length = array_length(notes);
@@ -106,7 +137,7 @@ db_metadata(uint64_t i)
 	}
 	metadata = malloc(sizeof(metadata_t));
 	if (metadata == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
+		PERROR("Failed to allocate buffer");
 		return NULL;
 	}
 	metadata->music = malloc(sizeof(char) * DB_STRING_LENGTH);
@@ -117,7 +148,7 @@ db_metadata(uint64_t i)
 	if (metadata->music == NULL || metadata->artist == NULL ||
 	    metadata->title == NULL || metadata->creator == NULL ||
 	    metadata->version == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
+		PERROR("Failed to allocate buffer");
 		metadata_free(metadata);
 		return NULL;
 	}
@@ -138,24 +169,43 @@ note_t *
 db_notes(uint64_t i)
 {
 	FILE *f;
-	char buffer[DB_STRING_LENGTH];
+	char *buffer = NULL;
+	char *filename = NULL;
 	note_t *chart = NULL;
 	uint64_t j, length;
 	if (i >= entries) {
 		ERRORF("%zu: Index out of bounds\n", i);
 		return NULL;
 	}
-	snprintf(buffer, DB_STRING_LENGTH, DB_CHART_FMT, i);
-	f = fopen(buffer, "rb");
+	buffer = text_format(DB_CHART_FMT, i);
+	if (buffer == NULL) {
+		ERROR("Failed to get filename");
+		return NULL;
+	}
+	filename = path_join(_directory, buffer);
+	if (buffer == NULL) {
+		ERROR("Failed to join filename");
+		free(buffer);
+		buffer = NULL;
+		return NULL;
+	}
+	f = fopen(filename, "rb");
 	if (f == NULL) {
-		ERRORF("%s: %s", buffer, strerror(errno));
-		puts(buffer);
+		PERROR(filename);
+		free(buffer);
+		free(filename);
+		buffer = NULL;
+		filename = NULL;
 		return NULL;
 	}
 	fread(&length, sizeof(uint64_t), 1, f);
 	array_init_capacity(chart, length);
 	if (chart == NULL) {
 		ERROR("Failed to initialize array\n");
+		free(buffer);
+		free(filename);
+		buffer = NULL;
+		filename = NULL;
 		return NULL;
 	}
 	array_length_set(chart, length);
@@ -165,6 +215,10 @@ db_notes(uint64_t i)
 		chart[j].hit = 0;
 	}
 	fclose(f);
+	free(buffer);
+	free(filename);
+	buffer = NULL;
+	filename = NULL;
 	return chart;
 }
 
@@ -174,4 +228,6 @@ db_close(void)
 	fclose(global);
 	global = NULL;
 	entries = 0;
+	free(_directory);
+	_directory = NULL;
 }

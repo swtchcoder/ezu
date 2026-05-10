@@ -7,10 +7,8 @@ extern "C" {
 
 #include <SDL3/SDL.h>
 
-void
-shapes_filled_circle(SDL_Renderer *r, int cx, int cy, int radius);
-void
-shapes_outlined_circle(SDL_Renderer *r, int cx, int cy, int radius);
+void shapes_filled_circle(SDL_Renderer *r, int cx, int cy, int radius);
+void shapes_outlined_circle(SDL_Renderer *r, int cx, int cy, int radius);
 
 #ifdef __cplusplus
 }

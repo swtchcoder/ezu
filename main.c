@@ -4,6 +4,7 @@
 #include "error.h"
 #include "notifications.h"
 #include "osz.h"
+#include "path.h"
 #include "shapes.h"
 #include "text.h"
 #include <SDL3/SDL.h>
@@ -12,6 +13,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <zip.h>
+#ifdef __linux__
+#include <pwd.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif /* __linux__ */
 
 #define WINDOW_WIDTH 800.0
 #define WINDOW_HEIGHT 600.0
@@ -72,10 +78,22 @@ main(int argc, char *argv[])
 	uint64_t entries, i;
 	int j;
 	metadata_t *metadata;
-	if (db_open() != 0) {
+#ifndef _WIN32
+	struct passwd *pw = getpwuid(getuid());
+	char *path = path_join(pw->pw_dir, ".local/share/ezu");
+	if (path == NULL) {
+		return 1;
+	}
+#else  /* _WIN32 */
+	char *path = "";
+#endif /* _WIN32 */
+	if (db_open(path) != 0) {
 		ERROR("Failed to open database\n");
 		return 1;
 	}
+#ifndef _WIN32
+	free(path);
+#endif /* _WIN32 */
 	if (notifications_init(NOTIFICATIONS_CAPACITY) != 0) {
 		ERROR("Unable to initialize notifications\n");
 	}

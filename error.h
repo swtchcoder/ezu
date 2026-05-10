@@ -5,10 +5,14 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #define _STR(x) #x
 #define STR(x) _STR(x)
+
+#define PERROR(fmt) ERRORF("%s: %s\n", fmt, strerror(errno))
 
 #define ERRORF(fmt, ...)                                                       \
 	fprintf(stderr,                                                        \

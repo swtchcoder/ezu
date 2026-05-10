@@ -8,6 +8,21 @@
 #include <string.h>
 
 char *
+text_copy(const char *text)
+{
+	if (text == NULL) {
+		return NULL;
+	}
+	char *copy = malloc(strlen(text) + 1);
+	if (copy == NULL) {
+		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
+		return NULL;
+	}
+	strcpy(copy, text);
+	return copy;
+}
+
+char *
 text_format(const char *fmt, ...)
 {
 	va_list ap;

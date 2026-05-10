@@ -57,7 +57,7 @@ void
 notifications_render(SDL_Renderer *renderer, TTF_Font *font, float x, float y,
 		     SDL_Color color, uint64_t tick)
 {
-	size_t i, j;
+	size_t i;
 	char *text;
 	int offset_y = 0;
 	notification_t n;
