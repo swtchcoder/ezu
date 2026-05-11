@@ -1,9 +1,9 @@
 #include "notifications.h"
 #include "circular_array.h"
 #include "error.h"
+#include "text.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
-#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,18 +35,15 @@ int
 notifications_add(const char *text, uint64_t tick)
 {
 	char *buffer;
-	size_t length;
 	if (notifications == NULL) {
 		ERROR("Notifications are not initialized");
 		return 1;
 	}
-	length = strlen(text);
-	buffer = malloc((length + 1) * sizeof(char));
+	buffer = text_copy(text);
 	if (buffer == NULL) {
-		ERRORF("Failed to allocate buffer: %s\n", strerror(errno));
+		ERROR("Could not copy notification message");
 		return 1;
 	}
-	memcpy(buffer, text, length + 1);
 	circular_array_push(notifications,
 			    ((notification_t){.text = buffer, .tick = tick}),
 			    notification_free);

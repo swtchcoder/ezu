@@ -32,6 +32,10 @@
 
 typedef enum { MISS = -15, GOOD = 50, GREAT = 100, PERFECT = 300 } hit_t;
 
+static void
+setup(void);
+static void
+run(void);
 static int
 step(void);
 static void
@@ -75,73 +79,98 @@ static float miss_alpha;
 int
 main(int argc, char *argv[])
 {
-	uint64_t entries, i;
-	int j;
+	int i;
+	setup();
+	for (i = 1; i < argc; i++) {
+		if (osz_import_path(argv[i]) == 0) {
+			notifications_add(argv[i], 0);
+		}
+	}
+	run();
+	return 0;
+}
+
+static void
+setup(void)
+{
 	metadata_t *metadata;
+	uint64_t entries, i;
+
 #ifndef _WIN32
 	struct passwd *pw = getpwuid(getuid());
 	char *path = path_join(pw->pw_dir, ".local/share/ezu");
 	if (path == NULL) {
-		return 1;
+		exit(1);
 	}
 #else  /* _WIN32 */
 	char *path = "";
 #endif /* _WIN32 */
 	if (db_open(path) != 0) {
 		ERROR("Failed to open database\n");
-		return 1;
+		exit(1);
 	}
 #ifndef _WIN32
 	free(path);
 #endif /* _WIN32 */
+
 	if (notifications_init(NOTIFICATIONS_CAPACITY) != 0) {
 		ERROR("Unable to initialize notifications\n");
 	}
+
 	entries = db_entries();
-	char buffer[256];
-	snprintf(buffer, 256, "Found %zu entries", entries);
+
+	char *buffer;
+	buffer = text_format("Found %zu entries", entries);
 	notifications_add(buffer, 0);
-	for (j = 1; j < argc; j++) {
-		if (osz_import_path(argv[j]) == 0) {
-			notifications_add(argv[j], 0);
-		}
-	}
+
+	free(buffer);
 	array_init_capacity(metadatas, entries);
 	for (i = 0; i < entries; i++) {
 		metadata = db_metadata(i);
 		if (metadata == NULL) {
-			ERRORF("%zu: Could not parse osu beatmap\n", i);
+			ERRORF("%zu: Could not get beatmap metadata\n", i);
 			continue;
 		}
 		array_append(metadatas, metadata);
 	}
+
 	if (TTF_Init() == 0) {
 		ERRORF("Unable to initialize SDL3_ttf: %s\n", SDL_GetError());
-		return 1;
+		exit(1);
 	}
+
 	font = TTF_OpenFont("font.ttf", 18);
 	if (font == NULL) {
 		ERRORF("Failed to open font: %s\n", SDL_GetError());
-		return 1;
+		exit(1);
 	}
+
 	if (SDL_Init(SDL_INIT_VIDEO) == 0) {
 		ERRORF("Unable to initialize SDL3: %s\n", SDL_GetError());
-		return 1;
+		exit(1);
 	}
+
 	window = SDL_CreateWindow("ezu", WINDOW_WIDTH, WINDOW_HEIGHT,
 				  SDL_WINDOW_OPENGL);
 	if (window == NULL) {
 		ERRORF("Failed to create window: %s\n", SDL_GetError());
 		SDL_Quit();
-		return 1;
+		exit(1);
 	}
+
 	r = SDL_CreateRenderer(window, NULL);
 	if (r == NULL) {
 		ERRORF("Failed to create renderer: %s\n", SDL_GetError());
 		SDL_DestroyWindow(window);
 		SDL_Quit();
-		return 1;
+		exit(1);
 	}
+}
+
+static void
+run(void)
+{
+	uint64_t i;
 	SDL_SetRenderDrawColor(r, background_color.r, background_color.g,
 			       background_color.b, background_color.a);
 	while (step()) {
@@ -158,7 +187,6 @@ main(int argc, char *argv[])
 		metadata_free(metadatas[i]);
 	}
 	array_free(metadatas);
-	return 0;
 }
 
 static int
