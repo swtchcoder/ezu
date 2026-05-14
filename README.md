@@ -91,3 +91,10 @@ make release
 # ou pour debug avec gdb
 make debug
 ```
+
+## Developpement
+
+Il se peut que pour faire fonctionner clangd il faut que vous fassiez
+```
+bear -- make
+```

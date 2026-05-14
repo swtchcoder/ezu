@@ -1,6 +1,6 @@
 include config.mk
 
-SRC=$(wildcard source/*.c)
+SRC=$(shell find source -name '*.c')
 OBJ=$(SRC:.c=.o)
 
 all: debug

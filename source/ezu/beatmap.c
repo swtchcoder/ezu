@@ -1,9 +1,9 @@
-#include "beatmap.h"
 #include "array.h"
+#include "ezu.h"
 #include <stdlib.h>
 
 float
-beatmap_difficulty(note_t *notes)
+ezu_beatmap_difficulty(ezu_note_t *notes)
 {
 	size_t length, i;
 	float difficulty, difference;
@@ -20,14 +20,14 @@ beatmap_difficulty(note_t *notes)
 }
 
 void
-beatmap_free(metadata_t *metadata, note_t *notes)
+ezu_beatmap_free(ezu_metadata_t *metadata, ezu_note_t *notes)
 {
-	metadata_free(metadata);
-	notes_free(notes);
+	ezu_metadata_free(metadata);
+	ezu_notes_free(notes);
 }
 
 void
-metadata_free(metadata_t *metadata)
+ezu_metadata_free(ezu_metadata_t *metadata)
 {
 	free(metadata->music);
 	free(metadata->artist);
@@ -42,7 +42,7 @@ metadata_free(metadata_t *metadata)
 }
 
 void
-notes_free(note_t *notes)
+ezu_notes_free(ezu_note_t *notes)
 {
 	array_free(notes);
 	notes = NULL;

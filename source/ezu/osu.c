@@ -1,20 +1,19 @@
-#include "osu.h"
 #include "array.h"
-#include "beatmap.h"
 #include "error.h"
+#include "ezu.h"
 #include "ini.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 #define OSU_CAPACITY 2
 
-metadata_t *
-osu_metadata(ini_t *ini)
+ezu_metadata_t *
+ezu_osu_metadata(ini_t *ini)
 {
 	char *value;
-	metadata_t *metadata;
+	ezu_metadata_t *metadata;
 
-	metadata = malloc(sizeof(metadata_t));
+	metadata = malloc(sizeof(ezu_metadata_t));
 	if (metadata == NULL) {
 		PERROR("Failed to allocate buffer");
 		return NULL;
@@ -78,12 +77,12 @@ osu_metadata(ini_t *ini)
 	return metadata;
 }
 
-note_t *
-osu_notes(ini_t *ini)
+ezu_note_t *
+ezu_osu_notes(ini_t *ini)
 {
 	int x, y, t, type;
 	char lane;
-	note_t *notes = NULL;
+	ezu_note_t *notes = NULL;
 	if (ini_section(ini, "HitObjects") != 0) {
 		return NULL;
 	}
@@ -104,7 +103,7 @@ osu_notes(ini_t *ini)
 		} else if (lane > 3) {
 			lane = 3;
 		}
-		array_append(notes, ((note_t){.time = t, .lane = lane}));
+		array_append(notes, ((ezu_note_t){.time = t, .lane = lane}));
 		while (*ini->cursor != '\n' && *ini->cursor != '\0') {
 			ini->cursor++;
 		}

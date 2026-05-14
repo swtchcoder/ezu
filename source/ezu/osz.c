@@ -1,26 +1,24 @@
-#include "osz.h"
 #include "array.h"
-#include "beatmap.h"
-#include "db.h"
 #include "error.h"
-#include "osu.h"
+#include "ezu.h"
+#include "ini.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zip.h>
 
-metadata_t **
-osz_import_path(const char *path)
+ezu_metadata_t **
+ezu_osz_import_path(const char *path)
 {
 	zip_t *z;
-	metadata_t **metadatas;
+	ezu_metadata_t **metadatas;
 	z = zip_open(path, 0, NULL);
 	if (z == NULL) {
 		ERRORF("%s: Failed to open zip file\n", path);
 		return NULL;
 	}
-	metadatas = osz_import(z);
+	metadatas = ezu_osz_import(z);
 	if (metadatas == NULL) {
 		ERRORF("%s: Failed to import osz file\n", path);
 		zip_close(z);
@@ -30,15 +28,14 @@ osz_import_path(const char *path)
 	return metadatas;
 }
 
-metadata_t **
-osz_import(zip_t *z)
+ezu_metadata_t **
+ezu_osz_import(zip_t *z)
 {
 	zip_int64_t entries, i;
 	ini_t *ini;
-	metadata_t *metadata;
-	metadata_t **metadatas = NULL;
-	note_t *notes;
-	int count = 0;
+	ezu_metadata_t *metadata;
+	ezu_metadata_t **metadatas = NULL;
+	ezu_note_t *notes;
 	struct zip_stat zs;
 	char *c;
 	array_init(metadatas);
@@ -52,39 +49,38 @@ osz_import(zip_t *z)
 		if (strcmp(c, ".osu") != 0) {
 			continue;
 		}
-		ini = osz_osu(z, zs.size, i);
+		ini = ezu_osz_osu(z, zs.size, i);
 		if (ini == NULL) {
 			continue;
 		}
-		metadata = osu_metadata(ini);
+		metadata = ezu_osu_metadata(ini);
 		if (metadata == NULL) {
 			ERRORF("%s: Failed to parse metadata\n", zs.name);
 			ini_free(ini);
 			continue;
 		}
-		notes = osu_notes(ini);
+		notes = ezu_osu_notes(ini);
 		if (notes == NULL) {
 			ERRORF("%s: Failed to parse chart\n", zs.name);
 			ini_free(ini);
-			metadata_free(metadata);
+			ezu_metadata_free(metadata);
 			continue;
 		}
-		if (db_add(metadata, notes) != 0) {
+		if (ezu_db_add(metadata, notes) != 0) {
 			ERRORF("%s: Failed to add to database\n", zs.name);
-			metadata_free(metadata);
+			ezu_metadata_free(metadata);
 			array_free(notes);
 			continue;
 		}
 		array_append(metadatas, metadata);
 		array_free(notes);
 		ini_free(ini);
-		count++;
 	}
 	return metadatas;
 }
 
 ini_t *
-osz_osu(zip_t *z, size_t size, uint64_t i)
+ezu_osz_osu(zip_t *z, size_t size, uint64_t i)
 {
 	zip_file_t *zf;
 	char *buf;

@@ -8,11 +8,10 @@
  * chart structure
  *         [chart length]
  *         [chart] */
-#include "db.h"
 #include "array.h"
-#include "beatmap.h"
 #include "directory.h"
 #include "error.h"
+#include "ezu.h"
 #include "path.h"
 #include "text.h"
 #include <stdint.h>
@@ -29,7 +28,7 @@ static uint64_t entries = 0;
 static char *_directory = NULL;
 
 int
-db_open(const char *directory)
+ezu_db_open(const char *directory)
 {
 	uint16_t version;
 	char *filename;
@@ -74,7 +73,7 @@ db_open(const char *directory)
 }
 
 int
-db_add(metadata_t *metadata, note_t *notes)
+ezu_db_add(ezu_metadata_t *metadata, ezu_note_t *notes)
 {
 	FILE *f;
 	uint64_t i;
@@ -122,20 +121,20 @@ db_add(metadata_t *metadata, note_t *notes)
 }
 
 uint64_t
-db_entries(void)
+ezu_db_entries(void)
 {
 	return entries;
 }
 
-metadata_t *
-db_metadata(uint64_t i)
+ezu_metadata_t *
+ezu_db_metadata(uint64_t i)
 {
-	metadata_t *metadata;
+	ezu_metadata_t *metadata;
 	if (i >= entries) {
 		ERRORF("%zu: Index out of bounds\n", i);
 		return NULL;
 	}
-	metadata = malloc(sizeof(metadata_t));
+	metadata = malloc(sizeof(ezu_metadata_t));
 	if (metadata == NULL) {
 		PERROR("Failed to allocate buffer");
 		return NULL;
@@ -149,7 +148,7 @@ db_metadata(uint64_t i)
 	    metadata->title == NULL || metadata->creator == NULL ||
 	    metadata->version == NULL) {
 		PERROR("Failed to allocate buffer");
-		metadata_free(metadata);
+		ezu_metadata_free(metadata);
 		return NULL;
 	}
 	fseek(global,
@@ -165,13 +164,13 @@ db_metadata(uint64_t i)
 	return metadata;
 }
 
-note_t *
-db_notes(uint64_t i)
+ezu_note_t *
+ezu_db_notes(uint64_t i)
 {
 	FILE *f;
 	char *buffer = NULL;
 	char *filename = NULL;
-	note_t *chart = NULL;
+	ezu_note_t *chart = NULL;
 	uint64_t j, length;
 	if (i >= entries) {
 		ERRORF("%zu: Index out of bounds\n", i);
@@ -223,7 +222,7 @@ db_notes(uint64_t i)
 }
 
 void
-db_close(void)
+ezu_db_close(void)
 {
 	fclose(global);
 	global = NULL;

@@ -1,9 +1,7 @@
 #include "array.h"
-#include "beatmap.h"
-#include "db.h"
 #include "error.h"
+#include "ezu.h"
 #include "notifications.h"
-#include "osz.h"
 #include "path.h"
 #include "shapes.h"
 #include "text.h"
@@ -60,14 +58,14 @@ static const SDL_Color text_color = {200, 200, 200, 255};
 
 static uint64_t tick;
 
-static metadata_t **metadatas;
+static ezu_metadata_t **metadatas;
 
 static size_t cursor = 0;
 static double cursor_alpha = 0.0;
 
 static int ingame = 0;
 
-static note_t *notes;
+static ezu_note_t *notes;
 static uint64_t start;
 static size_t notes_cursor;
 
@@ -82,7 +80,7 @@ main(int argc, char *argv[])
 	int i;
 	setup();
 	for (i = 1; i < argc; i++) {
-		if (osz_import_path(argv[i]) == 0) {
+		if (ezu_osz_import_path(argv[i]) == 0) {
 			notifications_add(argv[i], 0);
 		}
 	}
@@ -93,7 +91,7 @@ main(int argc, char *argv[])
 static void
 setup(void)
 {
-	metadata_t *metadata;
+	ezu_metadata_t *metadata;
 	uint64_t entries, i;
 
 #ifndef _WIN32
@@ -105,7 +103,7 @@ setup(void)
 #else  /* _WIN32 */
 	char *path = "";
 #endif /* _WIN32 */
-	if (db_open(path) != 0) {
+	if (ezu_db_open(path) != 0) {
 		ERROR("Failed to open database\n");
 		exit(1);
 	}
@@ -117,7 +115,7 @@ setup(void)
 		ERROR("Unable to initialize notifications\n");
 	}
 
-	entries = db_entries();
+	entries = ezu_db_entries();
 
 	char *buffer;
 	buffer = text_format("Found %zu entries", entries);
@@ -126,7 +124,7 @@ setup(void)
 	free(buffer);
 	array_init_capacity(metadatas, entries);
 	for (i = 0; i < entries; i++) {
-		metadata = db_metadata(i);
+		metadata = ezu_db_metadata(i);
 		if (metadata == NULL) {
 			ERRORF("%zu: Could not get beatmap metadata\n", i);
 			continue;
@@ -182,9 +180,9 @@ run(void)
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	notifications_free();
-	db_close();
+	ezu_db_close();
 	for (i = 0; i < array_length(metadatas); i++) {
-		metadata_free(metadatas[i]);
+		ezu_metadata_free(metadatas[i]);
 	}
 	array_free(metadatas);
 }
@@ -211,8 +209,8 @@ handle_drop_file(SDL_Event event)
 	if (event.type != SDL_EVENT_DROP_FILE) {
 		return;
 	}
-	metadata_t **_metadatas;
-	_metadatas = osz_import_path(event.drop.data);
+	ezu_metadata_t **_metadatas;
+	_metadatas = ezu_osz_import_path(event.drop.data);
 	if (_metadatas == NULL) {
 		return;
 	}
@@ -249,7 +247,7 @@ handle_key_down(SDL_Event event)
 			}
 			break;
 		case SDLK_RETURN:
-			notes = db_notes(cursor);
+			notes = ezu_db_notes(cursor);
 			if (notes == NULL) {
 				ERROR("Failed to load notes.\n");
 				return;
@@ -278,7 +276,7 @@ handle_key_down(SDL_Event event)
 			break;
 		case SDLK_ESCAPE:
 			ingame = 0;
-			notes_free(notes);
+			ezu_notes_free(notes);
 			break;
 		}
 	}
@@ -287,7 +285,7 @@ handle_key_down(SDL_Event event)
 static void
 hit(int lane)
 {
-	note_t *note = NULL;
+	ezu_note_t *note = NULL;
 	int dt;
 	size_t length, i;
 	length = array_length(notes);
@@ -382,7 +380,7 @@ render_game(void)
 {
 	size_t i;
 	float x, y;
-	note_t *note;
+	ezu_note_t *note;
 	int64_t dt;
 	float hit_line_y = WINDOW_HEIGHT - LANE_WIDTH / 2;
 	char *text = NULL;
