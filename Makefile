@@ -1,6 +1,6 @@
 include config.mk
 
-SRC=$(wildcard *.c)
+SRC=$(wildcard source/*.c)
 OBJ=$(SRC:.c=.o)
 
 all: debug
@@ -11,8 +11,8 @@ debug: build
 release: CFLAGS+=-Os
 release: build
 
-.c.o:
-	$(CC) $(CFLAGS) -c $<
+source/%.o: source/%.c
+	$(CC) -o $@ $(CFLAGS) -c $<
 
 $(OBJ): config.mk
 
