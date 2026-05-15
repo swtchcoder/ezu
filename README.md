@@ -81,20 +81,25 @@ de fonctionnel et qui peut durer dans le temps.
 
 </details>
 
-## Compilation
-En plus du compilateur `gcc` il vous faudra ces librairies :
+## Build
+En plus du compilateur gcc il vous faudra ces librairies :
 * `SDL3`
 * `SDL3_ttf`
 
+Si vous voulez partager ou utiliser le programme il vaut mieux utiliser les
+flags de RELEASE.
 ```
 make release
-# ou pour debug avec gdb
-make debug
 ```
 
-## Developpement
-
-Il se peut que pour faire fonctionner clangd il faut que vous fassiez
+Si vous voulez modifier le code il vaut mieux utiliser les flags de DEBUG.
 ```
-bear -- make
+make
+```
+
+## Documentation
+Si vous voulez obtenir la version html de la documentation il vous suffit
+d'utiliser doxygen.
+```
+doxygen
 ```

@@ -2,13 +2,21 @@ include config.mk
 
 SRC=$(shell find source -name '*.c')
 OBJ=$(SRC:.c=.o)
+CFLAGS=$(BASE_CFLAGS)
 
-all: debug
+all: .clangd debug
 
-debug: CFLAGS+=-g -O0 -DDEBUG
+.clangd: config.mk
+	printf "CompileFlags:\n" > .clangd
+	printf "  Add:\n" >> .clangd
+	for flag in $(BASE_CFLAGS) $(DEBUG_CFLAGS); do \
+		printf "    - %s\n" "$$flag" >> .clangd; \
+	done
+
+debug: CFLAGS+=$(DEBUG_CFLAGS)
 debug: build
 
-release: CFLAGS+=-Os
+release: CFLAGS+=$(RELEASE_CFLAGS)
 release: build
 
 source/%.o: source/%.c
